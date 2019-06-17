@@ -2,14 +2,19 @@ namespace WalrusBot2.Data
 {
     using System;
     using System.Data.Entity;
-    using System.ComponentModel.DataAnnotations.Schema;
     using System.Linq;
 
     public partial class dbContextWalrus : DbContext
     {
-        public dbContextWalrus()
-            : base("name=dbContextWalrus")
+        protected static string connectionString;
+        public static void SetConnectionString(string s)
         {
+            connectionString = s;
+        }
+
+        public dbContextWalrus() : base("name=dbContextWalrus")
+        {
+            Database.Connection.ConnectionString = connectionString;
         }
 
         public virtual DbSet<WalrusConf> WalrusConfs { get; set; }
@@ -17,6 +22,29 @@ namespace WalrusBot2.Data
         public virtual DbSet<WalrusRoleId> WalrusRoleIds { get; set; }
         public virtual DbSet<WalrusString> WalrusStrings { get; set; }
         public virtual DbSet<WalrusUserInfo> WalrusUserInfoes { get; set; }
+
+        public string this[string d, string k]
+        {
+            get
+            {
+                switch (d)
+                {
+                    case "config":
+                        return (from c in WalrusConfs where c.Key == k select c.Value).FirstOrDefault();
+                    case "string":
+                        return (from s in WalrusStrings where s.StringKey == k select s.StringValue).FirstOrDefault();
+                    case "role":
+                        return (from r in WalrusRoleIds where r.Role == k select r.Id).FirstOrDefault();
+                    default:
+                        return "";
+                }
+            }
+        }
+
+        private object await(IQueryable<WalrusConf> queryable)
+        {
+            throw new NotImplementedException();
+        }
 
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {

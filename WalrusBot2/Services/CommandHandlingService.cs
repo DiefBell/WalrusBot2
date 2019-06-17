@@ -5,6 +5,7 @@ using System;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using WalrusBot2.Data;
 
 namespace WalrusBot2.Services
 {
@@ -41,8 +42,10 @@ namespace WalrusBot2.Services
             if (!(rawMessage is SocketUserMessage message)) return;
             if (message.Source != MessageSource.User) return;
 
+            dbContextWalrus db = new dbContextWalrus();
             int argPos = 0;
-            if (!message.HasStringPrefix(Program._config["prefix"], ref argPos) && !message.HasMentionPrefix(_client.CurrentUser, ref argPos)) return;
+            
+            if (!message.HasStringPrefix(db["config", "botPrefix"], ref argPos) && !message.HasMentionPrefix(_client.CurrentUser, ref argPos)) return;
 
             var context = new SocketCommandContext(_client, message);
             var result = await _commands.ExecuteAsync(context, argPos, _provider);

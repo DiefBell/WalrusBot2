@@ -13,7 +13,7 @@ namespace WalrusBot2.Data
         [StringLength(16)]
         public string Role { get; set; }
 
-        [Column(TypeName = "uint")]
-        public long Id { get; set; }
+        [StringLength(16)]
+        public string Id { get; set; }
     }
 }

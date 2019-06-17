@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 namespace WalrusBot2.Modules
 {
     [Group("help")]
-    public class HelpModule : ModuleBase<SocketCommandContext>
+    public class HelpModule : XModule
     {
         [Command]
         public async Task HelpAsync()

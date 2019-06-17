@@ -6,7 +6,7 @@ using System.Collections.Generic;
 
 namespace WalrusBot2.Modules
 {
-    public class MiscModule : ModuleBase<SocketCommandContext>
+    public class MiscModule : XModule
     {
         [Command("ping")]
         public async Task PingAsync()
@@ -18,29 +18,20 @@ namespace WalrusBot2.Modules
 
         [Command("GDPR")]
         public async Task GdprAsync()
-            => await ReplyAsync("This is useful if, for whatever reason, you run an organisation that stores members' data.");
+            => await ReplyAsync(database["string", "gdpr"]);
 
         [Command("website")]
         [Alias("site")]
         public async Task WebsiteAsync()
-            => await ReplyAsync("Put a link to your website here! :)");
+            => await ReplyAsync(database["string", "website"]);
 
         [Command("bork")]
         public async Task Bork()
         {
-            ulong adminRoleId;
-            try
+            if(!HasRole(Context.User as IGuildUser, "committee"))
             {
-                adminRoleId = ulong.Parse(Program._config["AdminRoleID"]);
-                if (!((IList<ulong>)((IGuildUser)Context.User).RoleIds).Contains(adminRoleId))
-                {
-                    // in case you don't give your server mods the Admin permission (which to be frank you really shouldn't...)
-                    await ReplyAsync("That command is committee only! Please message a member of the committee if you need help with something :)");
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.Message);
+                await ReplyAsync(database["string","lacksperms"]);
+                return;
             }
 
             await ReplyAsync("Woof woof", true);
