@@ -44,8 +44,8 @@ namespace WalrusBot2.Services
 
             dbContextWalrus db = new dbContextWalrus();
             int argPos = 0;
-            
-            if (!message.HasStringPrefix(db["config", "botPrefix"], ref argPos) && !message.HasMentionPrefix(_client.CurrentUser, ref argPos)) return;
+
+            if (!message.HasStringPrefix(db["config", Program.Debug ? "botDebugPrefix" : "botPrefix"], ref argPos) && !message.HasMentionPrefix(_client.CurrentUser, ref argPos)) return;
 
             var context = new SocketCommandContext(_client, message);
             var result = await _commands.ExecuteAsync(context, argPos, _provider);

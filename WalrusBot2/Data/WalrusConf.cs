@@ -10,11 +10,11 @@ namespace WalrusBot2.Data
     public partial class WalrusConf
     {
         [Key]
-        [StringLength(16)]
+        [StringLength(32)]
         public string Key { get; set; }
 
         [Required]
-        [StringLength(64)]
+        [StringLength(128)]
         public string Value { get; set; }
     }
 }

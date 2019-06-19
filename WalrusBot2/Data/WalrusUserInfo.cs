@@ -13,6 +13,9 @@ namespace WalrusBot2.Data
         [StringLength(18)]
         public string UserId { get; set; }
 
+        [Column(TypeName = "bit")]
+        public bool Verified { get; set; }
+
         [Required]
         [StringLength(37)]
         public string Username { get; set; }
@@ -20,6 +23,11 @@ namespace WalrusBot2.Data
         [Required]
         [StringLength(254)]
         public string Email { get; set; }
+
+        [Column(TypeName = "char")]
+        [Required]
+        [StringLength(8)]
+        public string Code { get; set; }
 
         [StringLength(1073741823)]
         public string IGNsJSON { get; set; }
