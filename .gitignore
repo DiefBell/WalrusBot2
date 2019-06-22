@@ -213,3 +213,6 @@ wwwroot
 
 # Google Credentials file
 credentials.json
+
+# Test projects
+Test

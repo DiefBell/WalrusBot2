@@ -44,15 +44,8 @@ namespace WalrusBot2.Modules
         [Summary("Makes Maisie say \"woof\" in a text-to-speak message.")]
         [Command("bork")]
         [RequireUserPermission(GuildPermission.SendTTSMessages)]
+        [RequireUserRole(new string[] { "commitee" })]
         public async Task Bork()
-        {
-            if(!HasRole(Context.User as IGuildUser, "committee"))
-            {
-                await ReplyAsync(database["string","lacksperms"]);
-                return;
-            }
-
-            await ReplyAsync("Woof woof", true);
-        }
+            => await ReplyAsync("Woof woof", true);
     }
 }

@@ -116,7 +116,6 @@ namespace WalrusBot2
                 DriveService.Scope.DriveReadonly,
                 DriveService.Scope.DriveMetadataReadonly
             };
-
             using (var fs = new FileStream(_database["config", "googleCredPath"], FileMode.Open, FileAccess.Read))
             {
                 GoogleCredential = GoogleWebAuthorizationBroker.AuthorizeAsync(

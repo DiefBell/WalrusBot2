@@ -20,6 +20,8 @@ namespace WalrusBot2.Modules
     [RequireContext(ContextType.Guild)]
     public class ReactForRole : XModule
     {
+
+        
         [Command("create")]
         public async Task RfrCreateAsync(SocketGuildChannel channel, string title, string desc)
              => await RfrCreateAsync(channel, title, database["config", "rfrDefaultIconUrl"], desc);
@@ -262,7 +264,9 @@ namespace WalrusBot2.Modules
             #endregion
             var newMsg = await toChannel.SendMessageAsync("", false, embed);
             List<IEmote> emotes = oldMsg.Reactions.Keys.ToList();
-            foreach
+            //foreach
         }
+
+
     }
 }
