@@ -1,4 +1,6 @@
-﻿using System;
+﻿#define GOOGLE
+
+using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.IO;
@@ -27,11 +29,12 @@ namespace WalrusBot2
 {
     class Program
     {
+        public static bool Debug = false;
         private DiscordSocketClient _client;
         private dbContextWalrus _database = new dbContextWalrus();
         private DriveService _driveService;
         public static UserCredential GoogleCredential;
-        public static bool Debug = false;
+        
         #region Main
         static void Main(string[] args)
         {
@@ -109,6 +112,7 @@ namespace WalrusBot2
 
         public async Task MainAsync()
         {
+        #if GOOGLE
             #region Google
             #region OAuth2 Login
             string[] _scopes = {
@@ -121,7 +125,9 @@ namespace WalrusBot2
                 GoogleCredential = GoogleWebAuthorizationBroker.AuthorizeAsync(
                     GoogleClientSecrets.Load(fs).Secrets, _scopes, "user", CancellationToken.None, new FileDataStore(_database["config", "googleTokenPath"], true)).Result;
             }
+            Console.WriteLine("Got token.");
             #endregion
+
             #region Download Email Template
             _driveService = new DriveService(new BaseClientService.Initializer()
             {
@@ -160,7 +166,7 @@ namespace WalrusBot2
             }
             #endregion
             #endregion
-
+        #endif
             #region Discord
             _client = new DiscordSocketClient();
 
@@ -172,6 +178,7 @@ namespace WalrusBot2
             await _client.StartAsync();
             #endregion
 
+            await _client.SetActivityAsync(new Game("Half Life 3", ActivityType.Playing) );
             await Task.Delay(-1);
         }
         #endregion

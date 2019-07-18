@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WalrusBot2", "WalrusBot2\Wa
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WalrusProcessMonitor", "WalrusProcessMonitor\WalrusProcessMonitor.csproj", "{3416FF8E-4344-414F-89F5-68E9886227DB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test", "Test\Test.csproj", "{528A79E4-62EC-429F-B8CE-F2C20AFA0DE0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -31,6 +33,14 @@ Global
 		{3416FF8E-4344-414F-89F5-68E9886227DB}.Release|Any CPU.Build.0 = Release|Any CPU
 		{3416FF8E-4344-414F-89F5-68E9886227DB}.Release|x64.ActiveCfg = Release|Any CPU
 		{3416FF8E-4344-414F-89F5-68E9886227DB}.Release|x64.Build.0 = Release|Any CPU
+		{528A79E4-62EC-429F-B8CE-F2C20AFA0DE0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{528A79E4-62EC-429F-B8CE-F2C20AFA0DE0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{528A79E4-62EC-429F-B8CE-F2C20AFA0DE0}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{528A79E4-62EC-429F-B8CE-F2C20AFA0DE0}.Debug|x64.Build.0 = Debug|Any CPU
+		{528A79E4-62EC-429F-B8CE-F2C20AFA0DE0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{528A79E4-62EC-429F-B8CE-F2C20AFA0DE0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{528A79E4-62EC-429F-B8CE-F2C20AFA0DE0}.Release|x64.ActiveCfg = Release|Any CPU
+		{528A79E4-62EC-429F-B8CE-F2C20AFA0DE0}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

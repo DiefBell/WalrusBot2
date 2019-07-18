@@ -25,7 +25,7 @@ namespace WalrusBot2.Modules
             => await ReplyAsync($"Hello, I am a bot called **{Context.Client.CurrentUser.Username}** written in **Discord.Net 2.1.1**!\n");
 
         [Summary("Shows our GDPR message.")]
-        [Command("GDPR")]
+        [Command("gdpr")]
         public async Task GdprAsync()
             => await ReplyAsync(database["string", "gdpr"]);
 
@@ -44,7 +44,7 @@ namespace WalrusBot2.Modules
         [Summary("Makes Maisie say \"woof\" in a text-to-speak message.")]
         [Command("bork")]
         [RequireUserPermission(GuildPermission.SendTTSMessages)]
-        [RequireUserRole(new string[] { "commitee" })]
+        [RequireUserRole(new string[] { "commitee", "tester" })]
         public async Task Bork()
             => await ReplyAsync("Woof woof", true);
     }

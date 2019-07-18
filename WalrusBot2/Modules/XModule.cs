@@ -21,82 +21,154 @@ namespace WalrusBot2.Modules
     public abstract class XModuleUpdatable : XModule
     {
         protected RestUserMessage _msg;
-        protected Embed _embed;
+        protected Embed _oldEmbed;
+        protected Embed _newEmbed;
 
-        protected async Task CreateAsync()
+        [Command("create")]  // these are just put in as recommended command names, they don't actually do anything here
+        protected async Task<bool> CreateAsync(SocketGuildChannel channel, string footer, string title, string iconUrl, string desc)
         {
-
+            EmbedBuilder builder = new EmbedBuilder();
+            var author = new EmbedAuthorBuilder().WithName(title).WithIconUrl(iconUrl);
+            builder.WithAuthor(author).WithDescription(desc).WithFooter(footer);
+            var c = Context.Client.GetChannel(channel.Id) as ISocketMessageChannel;
+            _msg = (RestUserMessage)await c.SendMessageAsync("", false, builder.Build());
+            return true;
         }
-        protected async Task<bool> AddAsync(IMessageChannel channel, ulong msgId, string footer, string title, string content, int position=0)
+
+        [Command("add")]
+        [Alias("pos")]
+        protected async Task<bool> AddAsync(IMessageChannel channel, ulong msgId, string footer, string title, string content, int position = 0)  // footer required to verify embed "type" (e.g. React-for-Role, server-status etc.)
         {
-            if (!(await InitMessage(channel, msgId, footer) ) ) return false;
+            if (!(await InitMessage(channel, msgId, footer))) return false;
             EmbedBuilder builder;
 
-            if (position == 0)
+            if (position == 0) // adds it to the end of the existing embed
             {
-                builder = _embed.ToEmbedBuilder();
+                builder = _oldEmbed.ToEmbedBuilder();
                 builder.AddField(title, content);
-                _embed = builder.Build();
+                _newEmbed = builder.Build();
 
             }
             else
             {
-                if (position > 20 || position > _embed.Fields.Length)
+                if (position > 20 || position > _oldEmbed.Fields.Length + 1)
                 {
-                    await ReplyAsync(database["string", "errIndexTooHigh"]);
+                    await ReplyAsync(database["string", "errTooManyFields"]);
                     return false;
                 }
 
                 builder = new EmbedBuilder();
-                builder.WithAuthor(new EmbedAuthorBuilder().WithName(_embed.Author.Value.Name).WithIconUrl(_embed.Author.Value.IconUrl));
+                builder.WithAuthor(new EmbedAuthorBuilder().WithName(_oldEmbed.Author.Value.Name).WithIconUrl(_oldEmbed.Author.Value.IconUrl));
                 builder.WithFooter(footer);
 
                 int i = 1;
-                foreach (EmbedField field in _embed.Fields)
+                foreach (EmbedField field in _oldEmbed.Fields)
                 {
-                    if (position == 1 + i++) builder.AddField(title, content);
-                    if (field.Name != title) builder.AddField(field.Name, field.Value);
+                    if (i++ == position) builder.AddField(title, content);
+                    if (field.Name != title) builder.AddField(field.Name, field.Value);  // allows you to move items within the embed (instead of deleting it then re-adding it)
                 }
+                _newEmbed = builder.Build();
             }
-            await _msg.ModifyAsync(m => m.Embed = _embed);
+            await _msg.ModifyAsync(m => m.Embed = _newEmbed);
             return true;
         }
+
+        [Command("delete")]
+        [Alias(new string[]{"del", "remove", "rem"})]
         protected async Task<bool> RemoveAsync(IMessageChannel channel, ulong msgId, string footer, string title)
         {
             if (!(await InitMessage(channel, msgId, footer))) return false;
 
             EmbedBuilder builder = new EmbedBuilder();
-            builder.WithAuthor(new EmbedAuthorBuilder().WithName(_embed.Author.Value.Name).WithIconUrl(_embed.Author.Value.IconUrl));
+            builder.WithAuthor(new EmbedAuthorBuilder().WithName(_oldEmbed.Author.Value.Name).WithIconUrl(_oldEmbed.Author.Value.IconUrl));
             builder.WithFooter(footer);
-            EmbedField deletedField = new EmbedField();
-            foreach(EmbedField field in _embed.Fields)
+
+            List<EmbedField> deletedFields = _oldEmbed.Fields.Where(em => em.Name == title).ToList();
+            if(deletedFields.Count < 1)
             {
-                if (field.Name != title) builder.AddField(field.Name, field.Value);
-                else
-                {
-                    deletedField = field;
-                    break;
-                }
-            }
-            if(deletedField.Name != title)
-            {
-                await ReplyAsync(database["string", "errRoleNotInMessage"]);
+                await ReplyAsync(database["string", "errEntryNotInMessage"]);
                 return false;
             }
-            _embed = builder.Build();
-            await _msg.ModifyAsync(m => m.Embed = _embed);
+            EmbedField deletedField = deletedFields[0];
+
+            foreach (EmbedField f in _oldEmbed.Fields)
+            {
+                if (f.Name != title) builder.AddField(f.Name, f.Value);
+            }
+
+            _newEmbed = builder.Build();
+            await _msg.ModifyAsync(m => m.Embed = _newEmbed);
 
             return true;
         }
 
-        protected async Task MoveAsync()
+        [Command("move", RunMode = RunMode.Async)]
+        [Alias("mv")]
+        protected async Task<bool> MoveMessageAsync(IMessageChannel oldChannel, ulong msgId, IMessageChannel newChannel, string footer, bool delOld=true)
         {
+            if (!(await InitMessage(oldChannel, msgId, footer))) return false;  //finds and sets _msg and _oldEmbed
+            RestUserMessage newMsg = await newChannel.SendMessageAsync("", false, _oldEmbed) as RestUserMessage;
 
+            try
+            {
+                IEmote[] emotes = _msg.Reactions.Keys.ToArray();
+                await newMsg.AddReactionsAsync(emotes);
+                if(delOld) await _msg.DeleteAsync();
+                _msg = newMsg;
+            }
+            catch(Exception e)
+            {
+                await ReplyAsync(e.Message);
+                return false;
+            }
+            return true;
+        }
+
+        [Command("position")]
+        [Alias("pos")]
+        protected async Task<bool> PositionAsync(IMessageChannel channel, string footer, ulong msgId, string title, int position)
+        {
+            if (!(await InitMessage(channel, msgId, footer))) return false;
+
+            if (position > 20 || position > _oldEmbed.Fields.Length)
+            {
+                await ReplyAsync(database["string", "errTooManyFields"]);
+                return false;
+            }
+
+            EmbedBuilder builder = new EmbedBuilder();
+            builder.WithAuthor(new EmbedAuthorBuilder().WithName(_oldEmbed.Author.Value.Name).WithIconUrl(_oldEmbed.Author.Value.IconUrl));
+            builder.WithFooter(footer);
+
+            List<EmbedField> fields = _oldEmbed.Fields.Where(em => em.Name == title).ToList();
+            if(fields.Count < 1)
+            {
+                await ReplyAsync(database["string", "errEntryNotInMessage"]);
+                return false;
+            }
+            EmbedField field = fields[0];
+            
+            for(int i = 0; i < _oldEmbed.Fields.Length; i++)
+            {
+                EmbedField f = _oldEmbed.Fields[i];
+                if (f.Name != title) builder.AddField(f.Name, f.Value);
+                if (i + 1 == position) builder.AddField(field.Name, field.Value);
+            }
+            _newEmbed = builder.Build();
+            await _msg.ModifyAsync(m => m.Embed = _newEmbed);
+            return true;
         }
 
         protected async Task<bool> InitMessage(IMessageChannel channel, ulong msgId, string footer)
         {
-            _msg = await channel.GetMessageAsync(msgId) as RestUserMessage;
+            try
+            {
+                _msg = await channel.GetMessageAsync(msgId) as RestUserMessage;
+            }
+            catch
+            {
+                await ReplyAsync(database["string", "errParseMsgId"]);
+            }
             if (_msg == null)
             {
                 await ReplyAsync(database["string", "errMsgNotFound"]);
@@ -107,15 +179,15 @@ namespace WalrusBot2.Modules
                 await ReplyAsync(database["string", "errMsgNotValid"]);
                 return false;
             }
-            _embed = _msg.Embeds.ElementAt(0);
-            if (_embed.Fields.Length >= 20)
+            _oldEmbed = _msg.Embeds.ElementAt(0);
+            if (_oldEmbed.Fields.Length >= 20)
             {
                 await ReplyAsync(database["string", "errTooManyFields"]);
                 return false;
             }
-            if (_embed.Footer.Value.ToString() != footer)
+            if (_oldEmbed.Footer.Value.ToString() != footer)
             {
-                await ReplyAsync(database["string", "errWrongFooter"]);
+                await ReplyAsync(database["string", "errMsgNotValid"]);
             }
             return true;
         }

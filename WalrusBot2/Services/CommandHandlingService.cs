@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using WalrusBot2.Data;
+using WalrusBot2.Modules;
 
 namespace WalrusBot2.Services
 {
@@ -58,11 +59,33 @@ namespace WalrusBot2.Services
         private async Task ReactionAdded(Cacheable<IUserMessage, ulong> msg, ISocketMessageChannel channel, SocketReaction reaction)
         {
             IMessage message = await msg.GetOrDownloadAsync();
+            switch (message.Embeds.Count)
+            {
+                case 0:
+                    break;  // might do something with this eventually
+                case 1:
+                    IEmbed embed = message.Embeds.ElementAt<IEmbed>(0);
+                    if (embed.Footer.ToString() == "React-for-Role Embed" && reaction.UserId != _client.CurrentUser.Id) await ReactForRole.RfrAddRoleAsync(embed, reaction);
+                    break;
+                default:
+                    break;
+            }
         }
 
         private async Task ReactionRemoved(Cacheable<IUserMessage, ulong> msg, ISocketMessageChannel channel, SocketReaction reaction)
         {
             IMessage message = await msg.GetOrDownloadAsync();
+            switch (message.Embeds.Count)
+            {
+                case 0:
+                    break;  // might do something with this eventually
+                case 1:
+                    IEmbed embed = message.Embeds.ElementAt<IEmbed>(0);
+                    if (embed.Footer.ToString() == "React-for-Role Embed" && reaction.UserId != _client.CurrentUser.Id) await ReactForRole.RfrDelRoleAsync(embed, reaction);
+                    break;
+                default:
+                    break;
+            }
         }
         #endregion
     }

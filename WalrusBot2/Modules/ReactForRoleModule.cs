@@ -18,38 +18,41 @@ namespace WalrusBot2.Modules
     [Alias("rfr")]
     [Name("React for Role")]
     [RequireContext(ContextType.Guild)]
-    public class ReactForRole : XModule
+    [RequireUserRole(new string[] { "commitee", "tester" })]
+    public class ReactForRole : XModuleUpdatable
     {
 
-        
+        #region Create React-for-Role message
+        [Summary("Create a new React-for-Role message with given icon, title and description in the specified channel. Uses the current channel by default and icon is optional.")]
+        [Command("create")]
+        public async Task RfrCreateAsync(SocketGuildChannel channel, string title, string iconUrl, string desc)
+        {
+            if(await CreateAsync(channel, "React-for-Role", title, iconUrl, desc))
+            {
+                await ReplyAsync(database["string", "succRfrCreate"]);
+                await ReplyAsync($"Created message ID: `{_msg.Id}`");
+            }
+        }
         [Command("create")]
         public async Task RfrCreateAsync(SocketGuildChannel channel, string title, string desc)
              => await RfrCreateAsync(channel, title, database["config", "rfrDefaultIconUrl"], desc);
-        [Command("create")]
-        public async Task RfrCreateAsync(SocketGuildChannel channel, string title, string iconUrl, string desc)
-            => await generateRfrMessage(channel, title, iconUrl, desc);
         [Command("create")]
         public async Task RfrCreateAsync(string title, string desc)
              => await RfrCreateAsync(Context.Channel as SocketGuildChannel, title, database["config", "rfrDefaultIconUrl"], desc);
         [Command("create")]
         public async Task RfrCreateAsync(string title, string iconUrl, string desc)
-            => await generateRfrMessage(Context.Channel as SocketGuildChannel, title, iconUrl, desc);
+            => await RfrCreateAsync(Context.Channel as SocketGuildChannel, title, iconUrl, desc);
+        #endregion
 
-        private async Task<SocketUserMessage> generateRfrMessage(SocketGuildChannel channel, string title, string iconUrl, string desc)
-        {
-            EmbedBuilder builder = new EmbedBuilder();
-            var author = new EmbedAuthorBuilder().WithName(title).WithIconUrl(iconUrl);
-            builder.WithAuthor(author).WithDescription(desc).WithFooter("React-for-Role");
-            var c = Context.Client.GetChannel(channel.Id) as ISocketMessageChannel;
-            var msg = (IUserMessage)await c.SendMessageAsync("", false, builder.Build());
-            return msg as SocketUserMessage;
-        }
-
+        #region Add a role to React-for-Role message
+        [Summary("Adds and entry to a React-for-Role message with the provided ID in the specified channel (uses current channel by default). Both the message ID and role ID should be numbers that can " +
+            "be copied by enabling Settings>Appearance>Developer Mode. If you don't have Nitro then you can use an emote from another server by removing the angled brackets " +
+            "'<' '>' from the escaped emote string.")]
         [Command("add")]
-        public async Task RfrAddAsync(ulong msgId, string roleDisplayName, string roleEmote, string roleIdString)
-            => await RfrAddAsync(Context.Channel, msgId, roleDisplayName, roleEmote, roleIdString);
+        public async Task RfrAddAsync(ulong msgId, string roleDisplayName, string roleEmote, string roleIdString, int position=0)
+            => await RfrAddAsync(Context.Channel, msgId, roleDisplayName, roleEmote, roleIdString, position);
         [Command("add")]
-        public async Task RfrAddAsync(IMessageChannel channel, ulong msgId, string roleDisplayName, string roleEmote, string roleIdString)
+        public async Task RfrAddAsync(IMessageChannel channel, ulong msgId, string roleDisplayName, string roleEmote, string roleIdString, int position=0)
         {
             #region Role Validity
             UInt64 roleId;
@@ -59,59 +62,36 @@ namespace WalrusBot2.Modules
             }
             catch
             {
-                await ReplyAsync("Failed to parse the supplied Role ID string. Double check you've copied it correctly!");
+                await ReplyAsync(database["string", "errParseRoleId"]);
                 return;
             }
             IRole role = (channel as IGuildChannel).Guild.GetRole(roleId);
             if (role == null)
             {
-                await ReplyAsync("That doesn't seem to be a valid role for this server! Double check you've copied the role name correctly.");
+                await ReplyAsync(database["string", "errRoleInvalid"]);
                 return;
             }
             #endregion
             #region Emote Validity
-            Emote emote = null;
-            Emoji emoji = null;
-            if (roleEmote[0] == ':') roleEmote = '<' + roleEmote + '>';
-            if (!Emote.TryParse(roleEmote, out emote))
+            IEmote emote = parseEmote(ref roleEmote);
+            if(emote == null)
             {
-                try
-                {
-                    emoji = new Emoji(roleEmote);
-                }
-                catch
-                {
-                    await ReplyAsync("It appears that you're using an invalid emoji! If you're using an escaped string, double check it's correct.");
-                    return;
-                }
-            }
-            IEmote reactEmote;
-            if (emote == null) reactEmote = emoji;
-            else reactEmote = emote;
-            #endregion
-            RestUserMessage msg = await channel.GetMessageAsync(msgId) as RestUserMessage;
-            #region Confirm Valid Message
-            if (msg.Embeds.Count != 1)
-            {
-                await ReplyAsync("The message you've supplied doesn't seem to have the right number of embeds, double check you've got the right message ID! " +
-                    $"You may need to create the message first with `{database["config", Program.Debug ? "botDebugPrefix" : "botPrefix"]}rfr add`.");
-                return;
-            }
-            Embed embed = msg.Embeds.ElementAt(0) as Embed;
-            if (embed.Fields.Length >= 20)
-            {
-                await ReplyAsync("That message already has 20 fields, which is the most that it can support. " +
-                    $"Create a new React-for-Role message using `{database["config", Program.Debug ? "botDebugPrefix" : "botPrefix"]}rfr add`.");
-                return;
+                await ReplyAsync(database["string", "errParseNewEmote"]);
             }
             #endregion
-            EmbedBuilder builder = embed.ToEmbedBuilder();
-            builder.AddField(roleDisplayName, $"{roleEmote} {role.Mention}");
-            embed = builder.Build();
-            await msg.ModifyAsync(m => m.Embed = embed);
-            await msg.AddReactionAsync(reactEmote);
-        }
+            if (await AddAsync(channel, msgId, "React-for-Role", roleDisplayName, roleEmote.ToString() + " " + role.Mention, position))
+            {
+                await _msg.AddReactionAsync(emote);
+                await ReplyAndDeleteAsync(database["string", "succRfrAdd"], timeout: TimeSpan.FromSeconds(2));
+            }
 
+            // AddAsync() contains all of the error reporting, so this line is unnecessary
+            //else await ReplyAsync(database["string", "errAddRfr"] );
+        }
+        #endregion
+
+        #region Remove role from React-for-Role message
+        [Summary("Deletes an entry with the given name from a React-for-Role message with the given ID in the specified channel (uses current channel by default).")]
         [Command("remove")]
         [Alias("rem", "delete", "del")]
         public async Task RfrRemoveAsync(ulong msgId, string roleDisplayName)
@@ -121,152 +101,106 @@ namespace WalrusBot2.Modules
         [Alias("rem", "delete", "del")]
         public async Task RfrRemoveAsync(IMessageChannel channel, ulong msgId, string roleDisplayName)
         {
-            RestUserMessage msg = await channel.GetMessageAsync(msgId) as RestUserMessage;
-            #region Confirm Valid Message
-            if (msg.Embeds.Count != 1)
+            if(!await RemoveAsync(channel, msgId, "React-for-Role", roleDisplayName) ) return;
+
+            string emoteString = _oldEmbed.Fields.Where(em => em.Name == roleDisplayName).First().Value.Split(' ')[0];
+            IEmote emote = parseEmote(ref emoteString);  // not actually going to use the returned emoteString here
+            if(emote == null)
             {
-                await ReplyAsync("The message you've supplied doesn't seem to have the right number of embeds, double check you've got the right message ID! ");
+                await ReplyAsync(database["string", "errParseOldEmote"]);
                 return;
             }
-            Embed embed = msg.Embeds.ElementAt(0) as Embed;
-            if (embed.Fields.Length < 1)
-            {
-                await ReplyAsync("There are no roles in that message yet. " +
-                    $"Try adding some with `{database["config", Program.Debug ? "botDebugPrefix" : "botPrefix"]}rfr add` first.");
-                return;
-            }
-            #endregion
-            EmbedBuilder builder = new EmbedBuilder();
-            EmbedAuthorBuilder author = new EmbedAuthorBuilder().WithName(embed.Author.Value.Name).WithIconUrl(embed.Author.Value.IconUrl);
-            builder.WithAuthor(author).WithFooter("React-for-Role").WithDescription(embed.Description);
-            EmbedField deletedField = new EmbedField();
-            foreach (EmbedField field in embed.Fields)
-            {
-                if (field.Name != roleDisplayName) builder.AddField(field.Name, field.Value);
-                else
-                {
-                    deletedField = field;
-                    break;
-                }
-            }
-            if (deletedField.Name != roleDisplayName)
-            {
-                await ReplyAsync($"The role \"{roleDisplayName}\" doesn't even exist in the supplied message. Please check your spelling!");
-                return;
-            }
-            embed = builder.Build();
-            await msg.ModifyAsync(m => m.Embed = embed);
-            // get emoji
-            string emo = deletedField.Value.Split(' ')[0];
-            Emote emote = null;
-            Emoji emoji = null;
-            if (emo[0] == ':') emo = '<' + emo + '>';
-            if (!Emote.TryParse(emo, out emote))
-            {
-                try
-                {
-                    emoji = new Emoji(emo);
-                }
-                catch
-                {
-                    await ReplyAsync("There was an issue with removing the react for that role, so please go do that manually :)");
-                    return;
-                }
-            }
-            IEmote reactEmote;
-            if (emote == null) reactEmote = emoji;
-            else reactEmote = emote;
-            List<IUser> users = await msg.GetReactionUsersAsync(reactEmote, msg.Reactions[reactEmote].ReactionCount).Flatten().ToList();
+
+            List<IUser> users = await _msg.GetReactionUsersAsync(emote, _msg.Reactions[emote].ReactionCount).Flatten().ToList();
             foreach (IUser user in users)
             {
-                await msg.RemoveReactionAsync(reactEmote, user);
+                await _msg.RemoveReactionAsync(emote, user);
             }
+            await ReplyAndDeleteAsync(database["string", "succRfrDel"], timeout: TimeSpan.FromSeconds(2));
         }
+        #endregion
 
-        [Command("reposition")]
-        [Alias("pos")]
-        public async Task RfrRepositionAsync(ulong msgId, string roleDisplayName, int position)
-            => await RfrRepositionAsync(Context.Channel, msgId, roleDisplayName, position);
-        [Command("reposition")]
-        [Alias("pos")]
-        public async Task RfrRepositionAsync(IMessageChannel channel, ulong msgId, string roleDisplayName, int position)
-        {
-            RestUserMessage msg = await channel.GetMessageAsync(msgId) as RestUserMessage;
-            #region Confirm Valid Message
-            if (msg.Embeds.Count != 1)
-            {
-                await ReplyAsync("The message you've supplied doesn't seem to have the right number of embeds, double check you've got the right message ID! " +
-                    $"You may need to create the message first with `{database["config", Program.Debug ? "botDebugPrefix" : "botPrefix"]}rfr add`.");
-                return;
-            }
-            Embed embed = msg.Embeds.ElementAt(0) as Embed;
-            if (position > embed.Length)
-            {
-                await ReplyAsync("The position you've specified is greater than the number of roles in the React-for-Role embed! Please try again with a lower number... ");
-                return;
-            }
-            if(embed.Fields == null)
-            {
-                await ReplyAsync("That doesn't appear to be a valid React-for-Role message. Double check you've got the corrent message ID!");
-                return;
-            }
-            if (embed.Footer.Value.ToString() != "React-for-Role")  // throws an exception if the Embed has no footer...
-            {
-                await ReplyAsync("That doesn't appear to be a valid React-for-Role message. Double check you've got the corrent message ID!");
-                return;
-            }
-            #endregion
-            EmbedBuilder builder = new EmbedBuilder();
-            EmbedAuthorBuilder author = new EmbedAuthorBuilder().WithName(embed.Author.Value.Name).WithIconUrl(embed.Author.Value.IconUrl);
-            builder.WithAuthor(author).WithFooter("React-for-Role").WithDescription(embed.Description);
-            EmbedField moveField = embed.Fields.Where(x => x.Name == roleDisplayName).First();
-            int i = 1;
-            foreach (EmbedField field in embed.Fields)
-            {
-                if (position == i++) builder.AddField(moveField.Name, moveField.Value);
-                if (field.Name != roleDisplayName) builder.AddField(field.Name, field.Value);
-            }
-            embed = builder.Build();
-            await msg.ModifyAsync(m => m.Embed = embed);
-        }
-
-        [Command("move")]
+        #region Move a React-for-Role message
+        [Summary("Moves the React-for-Role message with the given ID from the `fromChannel` to the `toChannel`, taking all reacts with it. " +
+            "Uses the current channel for either the fromChannel or the toChannel, depending on which one is ommitted in the command.")]
+        [Command("move", RunMode = RunMode.Async)]
         [Alias("mv")]
         public async Task RfrMoveAsync(IMessageChannel fromChannel, ulong msgId, bool delOld=true)
             => await RfrMoveAsync(fromChannel, msgId, Context.Channel as IMessageChannel, delOld);
-        [Command("move")]
+        [Command("move", RunMode = RunMode.Async)]
         [Alias("mv")]
         public async Task RfrMoveAsync(ulong msgId, IMessageChannel toChannel, bool delOld=true)
             => await RfrMoveAsync(Context.Channel, msgId, toChannel, delOld);
-        [Command("move")]
+        [Command("move", RunMode = RunMode.Async)]
         [Alias("mv")]
-        public async Task RfrMoveAsync(IMessageChannel fromChannel, ulong msgId, IMessageChannel toChannel, bool delOld=true)
+        public async Task RfrMoveAsync(IMessageChannel fromChannel, ulong msgId, IMessageChannel toChannel, bool delOld = true)
         {
-            RestUserMessage oldMsg = await fromChannel.GetMessageAsync(msgId) as RestUserMessage;
-            #region Confirm Valid Message
-            if (oldMsg.Embeds.Count != 1)
+            if (await MoveMessageAsync(fromChannel, msgId, toChannel, "React-for-Role", delOld))
             {
-                await ReplyAsync("The message you've supplied doesn't seem to have the right number of embeds, double check you've got the right message ID! " +
-                    $"You may need to create the message first with `{database["config", Program.Debug ? "botDebugPrefix" : "botPrefix"]}rfr add`.");
-                return;
+                await ReplyAndDeleteAsync(database["string", "succRfrMove"], timeout: TimeSpan.FromSeconds(2));
+                await ReplyAsync($"Moved message ID: `{_msg.Id}`");
             }
-            Embed embed = oldMsg.Embeds.ElementAt(0) as Embed;
-            if (embed.Fields == null)
-            {
-                await ReplyAsync("That doesn't appear to be a valid React-for-Role message. Double check you've got the corrent message ID!");
-                return;
-            }
-            if (embed.Footer.Value.ToString() != "React-for-Role")  // throws an exception if the Embed has no footer...
-            {
-                await ReplyAsync("That doesn't appear to be a valid React-for-Role message. Double check you've got the corrent message ID!");
-                return;
-            }
-            #endregion
-            var newMsg = await toChannel.SendMessageAsync("", false, embed);
-            List<IEmote> emotes = oldMsg.Reactions.Keys.ToList();
-            //foreach
         }
+        #endregion
 
+        #region Position an entry in a React-for-Role message
+        [Summary("Repositions the given entry in a React-for-Role message with a given id in the specified channel to the provided position. Uses the current channel by default.")]
+        [Command("position")]
+        [Alias("pos")]
+        public async Task RfrPositionAsync(IMessageChannel channel, ulong msgId, string title, int position)
+        {
+            if(await PositionAsync(channel, "React-for-Role", msgId, title, position))
+            {
+                await ReplyAndDeleteAsync(database["string", "succRfrPos"], timeout: TimeSpan.FromSeconds(2));
+            }
+        }
+        #endregion
 
+        #region Role giving/removing
+        public static async Task RfrAddRoleAsync(IEmbed embed, SocketReaction reaction)
+        {
+            IGuildUser user = reaction.User.Value as IGuildUser;
+            dbContextWalrus database = new dbContextWalrus();
+
+            if (user.GuildId == Convert.ToUInt64(database["config", "svgeServerId"])  // if this is the main server (means it can be used in other servers) 
+                && !user.RoleIds.Contains<ulong>(Convert.ToUInt64(database["role", "communityMember"])) // and they don't have community membership
+                && !user.RoleIds.Contains<ulong>(Convert.ToUInt64(database["role", "student"]) ) ) return;  // and aren't a student, then don't give a role.
+
+            EmbedField field = embed.Fields.First(f => f.Value.StartsWith(reaction.Emote.ToString()));
+            int atIndex = field.Value.IndexOf('@');
+            ulong roleId = Convert.ToUInt64(field.Value.Remove(0, atIndex + 2).TrimEnd('>').ToString());
+            IRole role = user.Guild.Roles.First(r => r.Id == roleId);
+            await user.AddRoleAsync(role);
+        }
+        public static async Task RfrDelRoleAsync(IEmbed embed, SocketReaction reaction)
+        {
+            EmbedField field = embed.Fields.First(f => f.Value.StartsWith(reaction.Emote.ToString()));
+            int atIndex = field.Value.IndexOf('@');
+            ulong roleId = Convert.ToUInt64(field.Value.Remove(0, atIndex + 2).TrimEnd('>').ToString());
+            IGuildUser user = reaction.User.Value as IGuildUser;
+            IRole role = user.Guild.Roles.First(r => r.Id == roleId);
+            await user.RemoveRoleAsync(role);
+        }
+        #endregion
+
+        private IEmote parseEmote(ref string emoString)
+        {
+            Emote emote = null;
+            Emoji emoji = null;
+            if (emoString[0] == ':') emoString = '<' + emoString + '>';
+            if (!Emote.TryParse(emoString, out emote))
+            {
+                try
+                {
+                    emoji = new Emoji(emoString);
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+            if (emote == null) return emoji as IEmote;
+            else return emote as IEmote;
+        }
     }
 }

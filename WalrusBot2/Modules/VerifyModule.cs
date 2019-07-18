@@ -17,7 +17,6 @@ using System.Net.Mail;
 
 namespace WalrusBot2.Modules
 {
-    [RequireOwner()]
     [Group("verify")]
     [Name("User Verification")]
     public class VerifyModule : XModule
@@ -42,14 +41,19 @@ namespace WalrusBot2.Modules
         ///     <item> Check that the program doesn't crash if attempting to save an email that already exists (unique key). </item>
         /// </todo>
         [Command("email", RunMode = RunMode.Async)]
-        [RequireContext(ContextType.DM, ErrorMessage = "You've got to use this in a DM to me! I'll delete the email for you so no one sees :wink:")]
-        [Summary("Enter your email with **'svge!verify email [your email]'** to get your personal verification code sent to you. " +
-            "Use your University of Southampton email address to get access to the 'student' role so that you can vote at meetings and AGMs.")]
+        [Summary("Send a verification email to you with your unique identification code.")]
+        [Name("email (DM only)")]
         public async Task EmailAsync([Remainder]string email)
         {
+            if(!Context.IsPrivate)
+            {
+                await ReplyAsync(Context.User.Mention + " " + database["string", "errReqDm"]);
+                await Context.Message.DeleteAsync();
+                return;
+            }
             if(!IsValidEmail(email))
             {
-                await ReplyAsync("That doesn't appear to be a valid email address! Please try again.");
+                await ReplyAsync(database["string", "errEmailInvalid"]);
                 return;
             }
             WalrusUserInfo userInfo = await database.WalrusUserInfoes.FindAsync(Context.User.Id.ToString());
@@ -103,20 +107,27 @@ namespace WalrusBot2.Modules
             }
         }
 
-        [Command("messagenonverified")]
+        [Command("spam")]
         [Summary("Send a message to all non-verified persons in the server asking them to do so.")]
-        [RequireUserPermission(Discord.GuildPermission.ManageRoles)]
+        [RequireUserRole(new string[] { "commitee", "tester" })]
         public async Task MessageNonVerifiedAsync()
         {
             await ReplyAsync("Command not yet written...");
         }
 
         [Command("code")]
+        [Name("code (DM only)")]
         [Summary("Enter the code sent to your email to verify your email address!s")]
-        [RequireContext(ContextType.DM, ErrorMessage = "You're *supposed* to send this to me in a DM... Please go do that.")]
         public async Task CodeAsync(string code)
         {
-            await ReplyAsync($"Your code is **`{code}`**");
+            if (!Context.IsPrivate)
+            {
+                await ReplyAsync(Context.User.Mention + " " + database["string", "errReqDm"]);
+                await Context.Message.DeleteAsync();
+                return;
+            }
+
+            await ReplyAsync($"Your code is **`{code}`**. Dief hasn't written the rest of this yet ;)");
         }
 
         #region Utility Functions

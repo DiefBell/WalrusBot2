@@ -20,6 +20,7 @@ namespace WalrusBot2.Modules
 
         [Summary("Displays a list of commands that the user can use.")]
         [Command]
+        [Name("")]
         public async Task HelpAsync()
         {
             string prefix = database["config", Program.Debug ? "botDebugPrefix" : "botPrefix"];
@@ -37,7 +38,8 @@ namespace WalrusBot2.Modules
                     var result = await cmd.CheckPreconditionsAsync(Context);
                     if (result.IsSuccess)
                     {
-                        string d = $"{prefix}{cmd.Aliases.First()}";
+                        string modCmd = cmd.Module.Aliases.First();
+                        string d = $"{prefix}{modCmd + " " + cmd.Name}";
                         if (!descriptions.Contains(d)) descriptions.Add(d);
                     }
                 }
@@ -58,7 +60,8 @@ namespace WalrusBot2.Modules
 
         [Summary("Displays the help message for the given command.")]
         [Command]
-        public async Task HelpAsync(string command)
+        [Name("<command> [sub-command]")]
+        public async Task HelpAsync([Remainder]string command)
         {
             var result = _service.Search(Context, command);
 
