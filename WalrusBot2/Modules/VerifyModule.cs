@@ -19,6 +19,7 @@ namespace WalrusBot2.Modules
 {
     [Group("verify")]
     [Name("User Verification")]
+    [DontAutoLoad]
     public class VerifyModule : XModule
     {
         private static GmailService _gmailService = null;
@@ -26,7 +27,7 @@ namespace WalrusBot2.Modules
 
         public VerifyModule()
         {
-            if(_gmailService == null)
+            if (_gmailService == null)
             {
                 _gmailService = new GmailService(new BaseClientService.Initializer()
                 {
@@ -45,13 +46,13 @@ namespace WalrusBot2.Modules
         [Name("email (DM only)")]
         public async Task EmailAsync([Remainder]string email)
         {
-            if(!Context.IsPrivate)
+            if (!Context.IsPrivate)
             {
                 await ReplyAsync(Context.User.Mention + " " + database["string", "errReqDm"]);
                 await Context.Message.DeleteAsync();
                 return;
             }
-            if(!IsValidEmail(email))
+            if (!IsValidEmail(email))
             {
                 await ReplyAsync(database["string", "errEmailInvalid"]);
                 return;
@@ -67,7 +68,7 @@ namespace WalrusBot2.Modules
                     Email = email,
                     Code = RandomString(8)
                 };
-                if(await SendEmailAsync(email, userInfo.Code))
+                if (await SendEmailAsync(email, userInfo.Code))
                 {
                     database.WalrusUserInfoes.Add(userInfo);
                     await database.SaveChangesAsync();
@@ -85,21 +86,20 @@ namespace WalrusBot2.Modules
                 else
                 {
                     userInfo.Email = email;
-                    if(userInfo.Verified)
+                    if (userInfo.Verified)
                     {
                         userInfo.Verified = false;
                         await ReplyAsync("Please note that you've already verified with a different email and you may lose access to your roles until you've verified this one!");
                         await ReplyAndDeleteAsync("Please type \"confirm\" if this is correct and you wish to change your email (30 second timeout)");
-                        var response = await NextMessageAsync(new EnsureFromUserCriterion(Context.User.Id), timeout: TimeSpan.FromSeconds(31) );
-                        if (!(response.Content.ToLower() == "confirm") )
+                        var response = await NextMessageAsync(new EnsureFromUserCriterion(Context.User.Id), timeout: TimeSpan.FromSeconds(31));
+                        if (!(response.Content.ToLower() == "confirm"))
                         {
                             await ReplyAsync("You didn't confirm your email change within the time limit. If you still wish to change your email then please rerun the command.");
                             return;
                         }
-
                     }
                     userInfo.Code = RandomString(8);
-                    if(await SendEmailAsync(email, userInfo.Code))
+                    if (await SendEmailAsync(email, userInfo.Code))
                     {
                         await database.SaveChangesAsync();
                     }
@@ -131,6 +131,7 @@ namespace WalrusBot2.Modules
         }
 
         #region Utility Functions
+
         /// <summary>
         /// Sends an email to the given email address, substituting the given code into the email template.
         /// </summary>
@@ -204,6 +205,7 @@ namespace WalrusBot2.Modules
                 return false;
             }
         }
-        #endregion
+
+        #endregion Utility Functions
     }
 }
