@@ -160,7 +160,7 @@ namespace WalrusBot2.Modules
         public static async Task RfrAddRoleAsync(IEmbed embed, SocketReaction reaction)
         {
             IGuildUser user = reaction.User.Value as IGuildUser;
-            dbContextWalrus database = new dbContextWalrus();
+            dbWalrusContext database = new dbWalrusContext();
 
             if (user.GuildId == Convert.ToUInt64(database["config", "svgeServerId"])  // if this is the main server (means it can be used in other servers) 
                 && !user.RoleIds.Contains<ulong>(Convert.ToUInt64(database["role", "communityMember"])) // and they don't have community membership

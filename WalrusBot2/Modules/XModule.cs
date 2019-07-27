@@ -16,7 +16,7 @@ namespace WalrusBot2.Modules
     {
         public static CommandService Service;
 
-        protected dbContextWalrus database = new dbContextWalrus();
+        protected dbWalrusContext database = new dbWalrusContext();
     }
     public abstract class XModuleUpdatable : XModule
     {
@@ -211,7 +211,7 @@ namespace WalrusBot2.Modules
             var guild = user.Guild;
 
             List<ulong> roleIds = new List<ulong>();
-            dbContextWalrus database = new dbContextWalrus();
+            dbWalrusContext database = new dbWalrusContext();
 
             foreach (string role in _roles)
             {

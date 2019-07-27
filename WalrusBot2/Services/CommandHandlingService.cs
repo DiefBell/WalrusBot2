@@ -43,7 +43,7 @@ namespace WalrusBot2.Services
             if (!(rawMessage is SocketUserMessage message)) return;
             if (message.Source != MessageSource.User) return;
 
-            dbContextWalrus db = new dbContextWalrus();
+            dbWalrusContext db = new dbWalrusContext();
             int argPos = 0;
 
             if (!message.HasStringPrefix(db["config", Program.Debug ? "botDebugPrefix" : "botPrefix"], ref argPos) && !message.HasMentionPrefix(_client.CurrentUser, ref argPos)) return;

@@ -27,18 +27,20 @@ using WalrusBot2.Services;
 
 namespace WalrusBot2
 {
-    class Program
+    internal class Program
     {
         public static bool Debug = false;
         private DiscordSocketClient _client;
-        private dbContextWalrus _database = new dbContextWalrus();
+        private dbWalrusContext _database = new dbWalrusContext();
         private DriveService _driveService;
         public static UserCredential GoogleCredential;
-        
+
         #region Main
-        static void Main(string[] args)
+
+        private static void Main(string[] args)
         {
             #region MySql Server Login
+
             string server;
             string port;
             string database;
@@ -96,7 +98,8 @@ namespace WalrusBot2
                 builder.Add("user", user);
                 builder.Add("password", password);
                 builder.Add("persistsecurityinfo", "True");
-                dbContextWalrus.SetConnectionString(builder.ToString());
+                builder.Add("sslmode", "None");
+                //dbWalrusContext.SetConnectionString(builder.ToString());
             }
             catch (Exception e)
             {
@@ -105,16 +108,20 @@ namespace WalrusBot2
                 Console.Read();
                 return;
             }
-            #endregion
+
+            #endregion MySql Server Login
 
             new Program().MainAsync().GetAwaiter().GetResult();
         }
 
         public async Task MainAsync()
         {
-        #if GOOGLE
+#if GOOGLE
+
             #region Google
+
             #region OAuth2 Login
+
             string[] _scopes = {
                 GmailService.Scope.GmailSend,
                 DriveService.Scope.DriveReadonly,
@@ -126,9 +133,11 @@ namespace WalrusBot2
                     GoogleClientSecrets.Load(fs).Secrets, _scopes, "user", CancellationToken.None, new FileDataStore(_database["config", "googleTokenPath"], true)).Result;
             }
             Console.WriteLine("Got token.");
-            #endregion
+
+            #endregion OAuth2 Login
 
             #region Download Email Template
+
             _driveService = new DriveService(new BaseClientService.Initializer()
             {
                 HttpClientInitializer = GoogleCredential,
@@ -164,10 +173,15 @@ namespace WalrusBot2
             {
                 stream.WriteTo(fs);
             }
-            #endregion
-            #endregion
-        #endif
+
+            #endregion Download Email Template
+
+            #endregion Google
+
+#endif
+
             #region Discord
+
             _client = new DiscordSocketClient();
 
             var services = ConfigureServices();
@@ -176,12 +190,14 @@ namespace WalrusBot2
 
             await _client.LoginAsync(TokenType.Bot, _database["config", Program.Debug ? "botDebugToken" : "botToken"]);
             await _client.StartAsync();
-            #endregion
 
-            await _client.SetActivityAsync(new Game("Half Life 3", ActivityType.Playing) );
+            #endregion Discord
+
+            await _client.SetActivityAsync(new Game("Half Life 3", ActivityType.Playing));
             await Task.Delay(-1);
         }
-        #endregion
+
+        #endregion Main
 
         private IServiceProvider ConfigureServices()
         {
