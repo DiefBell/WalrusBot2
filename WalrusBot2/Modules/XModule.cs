@@ -39,7 +39,7 @@ namespace WalrusBot2.Modules
         [Alias("pos")]
         protected async Task<bool> AddAsync(IMessageChannel channel, ulong msgId, string footer, string title, string content, int position = 0)  // footer required to verify embed "type" (e.g. React-for-Role, server-status etc.)
         {
-            if (!(await InitMessage(channel, msgId, footer))) return false;
+            if (!(await InitMessage(channel, msgId, new string[] { footer }))) return false;
             EmbedBuilder builder;
 
             if (position == 0) // adds it to the end of the existing embed
@@ -77,7 +77,7 @@ namespace WalrusBot2.Modules
         [Alias(new string[]{"del", "remove", "rem"})]
         protected async Task<bool> RemoveAsync(IMessageChannel channel, ulong msgId, string footer, string title)
         {
-            if (!(await InitMessage(channel, msgId, footer))) return false;
+            if (!(await InitMessage(channel, msgId, new string[] { footer }))) return false;
 
             EmbedBuilder builder = new EmbedBuilder();
             builder.WithAuthor(new EmbedAuthorBuilder().WithName(_oldEmbed.Author.Value.Name).WithIconUrl(_oldEmbed.Author.Value.IconUrl));
@@ -106,7 +106,7 @@ namespace WalrusBot2.Modules
         [Alias("mv")]
         protected async Task<bool> MoveMessageAsync(IMessageChannel oldChannel, ulong msgId, IMessageChannel newChannel, string footer, bool delOld=true)
         {
-            if (!(await InitMessage(oldChannel, msgId, footer))) return false;  //finds and sets _msg and _oldEmbed
+            if (!(await InitMessage(oldChannel, msgId, new string[] { footer }, false))) return false;  //finds and sets _msg and _oldEmbed
             RestUserMessage newMsg = await newChannel.SendMessageAsync("", false, _oldEmbed) as RestUserMessage;
 
             try
@@ -128,7 +128,7 @@ namespace WalrusBot2.Modules
         [Alias("pos")]
         protected async Task<bool> PositionAsync(IMessageChannel channel, string footer, ulong msgId, string title, int position)
         {
-            if (!(await InitMessage(channel, msgId, footer))) return false;
+            if (!(await InitMessage(channel, msgId, new string[] { footer, "React-for-Role" }, false))) return false;
 
             if (position > 20 || position > _oldEmbed.Fields.Length)
             {
@@ -159,7 +159,7 @@ namespace WalrusBot2.Modules
             return true;
         }
 
-        protected async Task<bool> InitMessage(IMessageChannel channel, ulong msgId, string footer)
+        protected async Task<bool> InitMessage(IMessageChannel channel, ulong msgId, string[] footer, bool checkLen=true)
         {
             try
             {
@@ -180,12 +180,13 @@ namespace WalrusBot2.Modules
                 return false;
             }
             _oldEmbed = _msg.Embeds.ElementAt(0);
-            if (_oldEmbed.Fields.Length >= 20)
+            //don't run this on delete or move
+            if (_oldEmbed.Fields.Length >= 20 && checkLen)
             {
                 await ReplyAsync(database["string", "errTooManyFields"]);
                 return false;
             }
-            if (_oldEmbed.Footer.Value.ToString() != footer)
+            if (!footer.Contains(_oldEmbed.Footer.Value.ToString() ))
             {
                 await ReplyAsync(database["string", "errMsgNotValid"]);
             }
