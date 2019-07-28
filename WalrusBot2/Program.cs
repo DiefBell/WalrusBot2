@@ -99,7 +99,7 @@ namespace WalrusBot2
                 builder.Add("password", password);
                 builder.Add("persistsecurityinfo", "True");
                 builder.Add("sslmode", "None");
-                //dbWalrusContext.SetConnectionString(builder.ToString());
+                dbWalrusContext.SetConnectionString(builder.ToString());
             }
             catch (Exception e)
             {

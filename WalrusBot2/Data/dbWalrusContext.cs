@@ -8,9 +8,12 @@ namespace WalrusBot2.Data
     [DbConfigurationType(typeof(MySql.Data.EntityFramework.MySqlEFConfiguration))]
     public partial class dbWalrusContext : DbContext
     {
+        protected static string _connectionString;
+        public static void SetConnectionString(string s) => _connectionString = s;
         public dbWalrusContext()
             : base("name=dbWalrusContext")
         {
+            Database.Connection.ConnectionString = _connectionString;
         }
 
         public virtual DbSet<WalrusConf> WalrusConfs { get; set; }
