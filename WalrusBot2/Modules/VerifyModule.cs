@@ -20,7 +20,6 @@ namespace WalrusBot2.Modules
 {
     [Group("verify")]
     [Name("User Verification")]
-    [DontAutoLoad]
     public class VerifyModule : XModule
     {
         private static GmailService _gmailService = null;
