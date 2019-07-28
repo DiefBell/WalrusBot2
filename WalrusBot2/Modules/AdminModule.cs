@@ -107,12 +107,12 @@ namespace WalrusBot2.Modules
         [Command("resetserverperms")]
         [Name("Reset Server Permissions")]
         [Summary("Resets the view permissions for all channels in the guild to a specified list of roles, except for the categories and channels provided")]
-        /// <sudo>
+        /// <psuedo>
         /// Foreach channel:
         ///     Is it in the list of exempt channels? continue;
         ///     Is its category in the list of exempt categories? continue;
         ///     Set it to only be seeable by given roles (e.g. student, alumni, community member)
-        /// </sudo>
+        /// </psuedo>
         public async Task ResetGuildPermsAsync(string roles, string categories, string channels)
         {
         }

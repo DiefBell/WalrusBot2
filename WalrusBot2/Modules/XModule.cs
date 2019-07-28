@@ -106,8 +106,18 @@ namespace WalrusBot2.Modules
         [Alias("mv")]
         protected async Task<bool> MoveMessageAsync(IMessageChannel oldChannel, ulong msgId, IMessageChannel newChannel, string footer, bool delOld = true)
         {
-            if (!(await InitMessage(oldChannel, msgId, new string[] { footer }, false))) return false;  //finds and sets _msg and _oldEmbed
-            RestUserMessage newMsg = await newChannel.SendMessageAsync("", false, _oldEmbed) as RestUserMessage;
+            if (!(await InitMessage(oldChannel, msgId, new string[] { footer, "React-for-Role" }, false))) return false;  //finds and sets _msg and _oldEmbed
+            if (_oldEmbed.Footer != null) if (_oldEmbed.Footer.Value.Text != "React-for-Role Embed")
+                {
+                    EmbedBuilder builder = _oldEmbed.ToEmbedBuilder();
+                    builder.Footer.Text = "React-for-Role Embed";
+                    _newEmbed = builder.Build();
+                }
+                else
+                {
+                    _newEmbed = _oldEmbed;
+                }
+            RestUserMessage newMsg = await newChannel.SendMessageAsync("", false, _newEmbed) as RestUserMessage;
 
             try
             {

@@ -49,7 +49,7 @@ namespace WalrusBot2.Modules
             }*/
         }
 
-        /// <sudo>
+        /// <pseudo>
         ///     Check the message has been sent in a DM. Delete the message if not.
         ///     Check the sender is in the guild.
         ///     Confirm that it's a valid email addresss.
@@ -62,7 +62,7 @@ namespace WalrusBot2.Modules
         ///     }
         ///     Generate a code for this user, double check that it doesn't exist in the database already (pretty unlikely), save info to database.
         ///     Send email to user with their code.
-        /// </sudo>
+        /// </pseudo>
         [RequireUserRole(new string[] { "commitee", "tester" })]
         [Command("email", RunMode = RunMode.Async)]
         [Summary("Send a verification email to you with your unique identification code.")]
@@ -130,10 +130,10 @@ namespace WalrusBot2.Modules
             }
         }
 
-        /// <sudo>
+        /// <pseudo>
         /// Go through all members in the guild, check they're not a bot, whether their userId is in the database and if they're verified.
         /// If they aren't, send them a DM.
-        /// </sudo>
+        /// </pseudo>
         [RequireUserRole(new string[] { "commitee", "tester" })]
         [Command("spam")]
         [Summary("Send a message to all non-verified persons in the server asking them to do so.")]
@@ -142,12 +142,12 @@ namespace WalrusBot2.Modules
             await ReplyAsync("Command not yet written...");
         }
 
-        /// <sudo>
+        /// <pseudo>
         /// Check that the user is in the database
         /// Confirm the code matches their code
         /// Set their status to verified
         /// Run an update for that user.
-        /// </sudo>
+        /// </pseudo>
         [RequireUserRole(new string[] { "commitee", "tester" })]
         [Command("code")]
         [Name("code (DM only)")]
@@ -168,7 +168,7 @@ namespace WalrusBot2.Modules
         [Command("update", RunMode = RunMode.Async)]
         [Name("Update")]
         [Summary("Update role and membership information for all members")]
-        /// <sudo>
+        /// <pseudo>
         /// Foreach member on server:
         ///     Are they a bot? continue;
         ///     Do they already exist in the database?
@@ -177,7 +177,7 @@ namespace WalrusBot2.Modules
         ///             If it ends with @soton.ac.uk etc then give the student role
         ///             Cross-reference with SUSU membership list, give roles
         ///         else: Remove student role and membership roles
-        /// </sudo>
+        /// </pseudo>
         public async Task UpdateAsync()
         {
             foreach (IGuildUser user in Context.Guild.Users) await UpdateAsync(user.Id);
@@ -187,7 +187,7 @@ namespace WalrusBot2.Modules
         [Command("update")]
         [Name("Update")]
         [Summary("Update role and membership information for a given member")]
-        /// <sudo>
+        /// <pseudo>
         /// Are they a bot? continue;
         /// Do they already exist in the database?
         ///     Apply any custom roles e.g. alumni
@@ -195,7 +195,7 @@ namespace WalrusBot2.Modules
         ///         If it ends with @soton.ac.uk etc then give the student role
         ///         Cross-reference with SUSU membership list, give roles
         ///     else: Remove student role and membership roles
-        /// </sudo>
+        /// </pseudo>
         public async Task UpdateAsync(ulong userId)
         {
             //double check they're on the server
@@ -205,23 +205,23 @@ namespace WalrusBot2.Modules
         [Name("Reset")]
         [Summary("Resets the verifications and roles for all members except for their custom roles (e.g. committee or alumni roles).")]
         [RequireUserRole(new string[] { "committee", "tester" })]
-        /// <sudo>
+        /// <pseudo>
         /// Foreach member on server:
         ///     Are they a bot? continue;
         ///     Check if they are in the database and have any custom roles
         ///     Remove every role that isn't a custom role
-        /// </sudo>
+        /// </pseudo>
         public async Task ResetUsersAsync()
         {
         }
 
         #region Static Members
 
-        /// <sudo>
+        /// <pseudo>
         /// Ensure they aren't a bot.
         /// Check we can send a message to this user.
         /// Send message to user.
-        /// </sudo>
+        /// </pseudo>
         public static async Task SpamOnJoinAsync()
         {
         }
