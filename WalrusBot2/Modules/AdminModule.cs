@@ -15,6 +15,7 @@ namespace WalrusBot2.Modules
     public class AdminModule : XModule
     {
         #region Purge
+
         [Command("purge", RunMode = RunMode.Async)]
         [Summary("Delete n messages (97 max) from the given channel.")]
         public async Task PurgeAsync(IMessageChannel channel, int n)
@@ -27,19 +28,22 @@ namespace WalrusBot2.Modules
                 await ReplyAndDeleteAsync("Purge cancelled.", timeout: TimeSpan.FromSeconds(5));
                 return;
             }
-            
+
             n = n >= 97 ? 100 : n + 3;
             var messages = await Context.Channel.GetMessagesAsync(n).FlattenAsync();
             foreach (IMessage message in messages) await message.DeleteAsync();
             await ReplyAndDeleteAsync("Messages deleted...", timeout: TimeSpan.FromSeconds(3));
         }
+
         [Command("purge", RunMode = RunMode.Async)]
         [Summary("Delete n messages (97 max) from the current channel.")]
         public async Task PurgeAsync(int n)
             => await PurgeAsync(Context.Channel, n);
-        #endregion
+
+        #endregion Purge
 
         #region Popularity
+
         [Command("popularity", RunMode = RunMode.Async)]
         [Alias("pop")]
         [Summary("Lists the n channels (20 max) with the oldest most-recent messages, excluding channels in the provided categories, " +
@@ -47,7 +51,7 @@ namespace WalrusBot2.Modules
         public async Task PopularityAsync(int n, string channelIgnoreTerms, string categoryIgnoreTerms, [Remainder] string exclude)
         {
             List<ulong> excludeIds = new List<ulong>();
-            foreach(string s in exclude.Split(' '))
+            foreach (string s in exclude.Split(' '))
             {
                 if (UInt64.TryParse(s, out ulong u)) excludeIds.Add(u);
                 else
@@ -64,20 +68,20 @@ namespace WalrusBot2.Modules
 
             IMessage alertMsg = await ReplyAsync("Sorting channels by oldest last message. This may take a while, please wait...");
 
-            foreach(IMessageChannel c in await guild.GetTextChannelsAsync() )
+            foreach (IMessageChannel c in await guild.GetTextChannelsAsync())
             {
                 if (excludeIds.Contains(c.Id)) continue;
-                if (chanIgnoreStrings.Any(s => c.Name.ToLower().Contains(s.ToLower() ) ) ) continue;  // don't check announcement channels as they tend not to be used as often
+                if (chanIgnoreStrings.Any(s => c.Name.ToLower().Contains(s.ToLower()))) continue;  // don't check announcement channels as they tend not to be used as often
 
                 ulong? category = (c as SocketTextChannel).CategoryId;
                 if (category == null) continue;  // not going to check anything that's not in a category
                 if (excludeIds.Contains(category.Value)) continue;
-                if (catIgnoreStrings.Any(s => (c as SocketTextChannel).Category.Name.ToLower().Contains(s.ToLower() ) ) ) continue;
+                if (catIgnoreStrings.Any(s => (c as SocketTextChannel).Category.Name.ToLower().Contains(s.ToLower()))) continue;
 
                 var msg = (await c.GetMessagesAsync(1).FlattenAsync())?.FirstOrDefault();
                 DateTime ts = msg != null ? msg.Timestamp.DateTime : c.CreatedAt.DateTime;
 
-                channels.Add(new KeyValuePair<IGuildChannel, DateTime>(c as IGuildChannel, ts) );
+                channels.Add(new KeyValuePair<IGuildChannel, DateTime>(c as IGuildChannel, ts));
             }
             channels.Sort((x, y) => DateTime.Compare(x.Value, y.Value));
 
@@ -97,6 +101,20 @@ namespace WalrusBot2.Modules
             await alertMsg.DeleteAsync();
             await Context.Channel.SendMessageAsync("*Most recent activity of channels in this server:*", false, builder.Build());
         }
-        #endregion
+
+        #endregion Popularity
+
+        [Command("resetserverperms")]
+        [Name("Reset Server Permissions")]
+        [Summary("Resets the view permissions for all channels in the guild to a specified list of roles, except for the categories and channels provided")]
+        /// <sudo>
+        /// Foreach channel:
+        ///     Is it in the list of exempt channels? continue;
+        ///     Is its category in the list of exempt categories? continue;
+        ///     Set it to only be seeable by given roles (e.g. student, alumni, community member)
+        /// </sudo>
+        public async Task ResetGuildPermsAsync(string roles, string categories, string channels)
+        {
+        }
     }
 }

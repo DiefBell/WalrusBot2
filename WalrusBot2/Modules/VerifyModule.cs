@@ -35,12 +35,34 @@ namespace WalrusBot2.Modules
                     ApplicationName = database["config", "googleAppName"]
                 });
             }
+
+            //temporarily removed until the update function has been properly tested.]
+
+            /*if (_dailyUpdate != null)
+            {
+                _dailyUpdate = new DailyUpdate(4); // 4am
+                _dailyUpdate.OnTimeTriggered += () =>
+                new Task(async () =>
+                {
+                    await UpdateAsync();
+                });
+            }*/
         }
 
-        /// <todo>
-        ///     <item> Ensure that users can't use each other's email addresses for verification. </item>
-        ///     <item> Check that the program doesn't crash if attempting to save an email that already exists (unique key). </item>
-        /// </todo>
+        /// <sudo>
+        ///     Check the message has been sent in a DM. Delete the message if not.
+        ///     Check the sender is in the guild.
+        ///     Confirm that it's a valid email addresss.
+        ///     Check if that email already exists in the database and if it belongs to someones else. Ask the user to contact a committee member.
+        ///     Check if this user is verified. If they are verified with that email, tell them then return.
+        ///     If they are verified but want are trying to use a different email address
+        ///     {
+        ///         get them to confirm they want to change
+        ///         remove verified status
+        ///     }
+        ///     Generate a code for this user, double check that it doesn't exist in the database already (pretty unlikely), save info to database.
+        ///     Send email to user with their code.
+        /// </sudo>
         [Command("email", RunMode = RunMode.Async)]
         [Summary("Send a verification email to you with your unique identification code.")]
         [Name("email (DM only)")]
@@ -107,6 +129,10 @@ namespace WalrusBot2.Modules
             }
         }
 
+        /// <sudo>
+        /// Go through all members in the guild, check they're not a bot, whether their userId is in the database and if they're verified.
+        /// If they aren't, send them a DM.
+        /// </sudo>
         [Command("spam")]
         [Summary("Send a message to all non-verified persons in the server asking them to do so.")]
         [RequireUserRole(new string[] { "commitee", "tester" })]
@@ -115,6 +141,12 @@ namespace WalrusBot2.Modules
             await ReplyAsync("Command not yet written...");
         }
 
+        /// <sudo>
+        /// Check that the user is in the database
+        /// Confirm the code matches their code
+        /// Set their status to verified
+        /// Run an update for that user.
+        /// </sudo>
         [Command("code")]
         [Name("code (DM only)")]
         [Summary("Enter the code sent to your email to verify your email address!s")]
@@ -129,6 +161,59 @@ namespace WalrusBot2.Modules
 
             await ReplyAsync($"Your code is **`{code}`**. Dief hasn't written the rest of this yet ;)");
         }
+
+        [Command("update")]
+        [Name("Update")]
+        [Summary("Update role and membership information for all members")]
+        /// <sudo>
+        /// Foreach member on server:
+        ///     Are they a bot? continue;
+        ///     Do they already exist in the database?
+        ///         Apply any custom roles e.g. alumni
+        ///         Is their email verified?
+        ///             If it ends with @soton.ac.uk etc then give the student role
+        ///             Cross-reference with SUSU membership list, give roles
+        ///         else: Remove student role and membership roles
+        /// </sudo>
+        [RequireUserRole(new string[] { "committee", "tester" })]
+        public async Task UpdateAsync()
+        {
+        }
+
+        [RequireUserRole(new string[] { "committee", "tester" })]
+        public async Task UpdateAsync(ulong userId)
+        {
+            //double check they're on the server
+        }
+
+        [Command("reset")]
+        [Name("Reset")]
+        [Summary("Resets the verifications and roles for all members except for their custom roles (e.g. committee or alumni roles).")]
+        [RequireUserRole(new string[] { "committee", "tester" })]
+        /// <sudo>
+        /// Foreach member on server:
+        ///     Are they a bot? continue;
+        ///     Check if they are in the database and have any custom roles
+        ///     Remove every role that isn't a custom role
+        /// </sudo>
+        public async Task ResetUsersAsync()
+        {
+        }
+
+        #region Static Members
+
+        /// <sudo>
+        /// Ensure they aren't a bot.
+        /// Check we can send a message to this user.
+        /// Send message to user.
+        /// </sudo>
+        public static async Task SpamOnJoinAsync()
+        {
+        }
+
+        private static DailyUpdate _dailyUpdate = null;
+
+        #endregion Static Members
 
         #region Utility Functions
 

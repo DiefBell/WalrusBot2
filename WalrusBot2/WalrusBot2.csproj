@@ -93,6 +93,7 @@
     <Compile Include="Data\WalrusString.cs" />
     <Compile Include="Data\WalrusUserInfo.cs" />
     <Compile Include="Modules\AdminModule.cs" />
+    <Compile Include="Modules\BackupModule.cs" />
     <Compile Include="Modules\ProcessListModule.cs" />
     <Compile Include="Modules\ReactForRoleModule.cs" />
     <Compile Include="Modules\VerifyModule.cs" />

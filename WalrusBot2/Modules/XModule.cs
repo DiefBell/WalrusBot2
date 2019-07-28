@@ -18,6 +18,7 @@ namespace WalrusBot2.Modules
 
         protected dbWalrusContext database = new dbWalrusContext();
     }
+
     public abstract class XModuleUpdatable : XModule
     {
         protected RestUserMessage _msg;
@@ -47,7 +48,6 @@ namespace WalrusBot2.Modules
                 builder = _oldEmbed.ToEmbedBuilder();
                 builder.AddField(title, content);
                 _newEmbed = builder.Build();
-
             }
             else
             {
@@ -74,7 +74,7 @@ namespace WalrusBot2.Modules
         }
 
         [Command("delete")]
-        [Alias(new string[]{"del", "remove", "rem"})]
+        [Alias(new string[] { "del", "remove", "rem" })]
         protected async Task<bool> RemoveAsync(IMessageChannel channel, ulong msgId, string footer, string title)
         {
             if (!(await InitMessage(channel, msgId, new string[] { footer }))) return false;
@@ -84,7 +84,7 @@ namespace WalrusBot2.Modules
             builder.WithFooter(footer);
 
             List<EmbedField> deletedFields = _oldEmbed.Fields.Where(em => em.Name == title).ToList();
-            if(deletedFields.Count < 1)
+            if (deletedFields.Count < 1)
             {
                 await ReplyAsync(database["string", "errEntryNotInMessage"]);
                 return false;
@@ -104,7 +104,7 @@ namespace WalrusBot2.Modules
 
         [Command("move", RunMode = RunMode.Async)]
         [Alias("mv")]
-        protected async Task<bool> MoveMessageAsync(IMessageChannel oldChannel, ulong msgId, IMessageChannel newChannel, string footer, bool delOld=true)
+        protected async Task<bool> MoveMessageAsync(IMessageChannel oldChannel, ulong msgId, IMessageChannel newChannel, string footer, bool delOld = true)
         {
             if (!(await InitMessage(oldChannel, msgId, new string[] { footer }, false))) return false;  //finds and sets _msg and _oldEmbed
             RestUserMessage newMsg = await newChannel.SendMessageAsync("", false, _oldEmbed) as RestUserMessage;
@@ -113,10 +113,10 @@ namespace WalrusBot2.Modules
             {
                 IEmote[] emotes = _msg.Reactions.Keys.ToArray();
                 await newMsg.AddReactionsAsync(emotes);
-                if(delOld) await _msg.DeleteAsync();
+                if (delOld) await _msg.DeleteAsync();
                 _msg = newMsg;
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 await ReplyAsync(e.Message);
                 return false;
@@ -141,14 +141,14 @@ namespace WalrusBot2.Modules
             builder.WithFooter(footer);
 
             List<EmbedField> fields = _oldEmbed.Fields.Where(em => em.Name == title).ToList();
-            if(fields.Count < 1)
+            if (fields.Count < 1)
             {
                 await ReplyAsync(database["string", "errEntryNotInMessage"]);
                 return false;
             }
             EmbedField field = fields[0];
-            
-            for(int i = 0; i < _oldEmbed.Fields.Length; i++)
+
+            for (int i = 0; i < _oldEmbed.Fields.Length; i++)
             {
                 EmbedField f = _oldEmbed.Fields[i];
                 if (f.Name != title) builder.AddField(f.Name, f.Value);
@@ -159,7 +159,7 @@ namespace WalrusBot2.Modules
             return true;
         }
 
-        protected async Task<bool> InitMessage(IMessageChannel channel, ulong msgId, string[] footer, bool checkLen=true)
+        protected async Task<bool> InitMessage(IMessageChannel channel, ulong msgId, string[] footer, bool checkLen = true)
         {
             try
             {
@@ -186,7 +186,7 @@ namespace WalrusBot2.Modules
                 await ReplyAsync(database["string", "errTooManyFields"]);
                 return false;
             }
-            if (!footer.Contains(_oldEmbed.Footer.Value.ToString() ))
+            if (!footer.Contains(_oldEmbed.Footer.Value.ToString()))
             {
                 await ReplyAsync(database["string", "errMsgNotValid"]);
             }
@@ -204,6 +204,7 @@ namespace WalrusBot2.Modules
         }
 
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
+
         public override async Task<PreconditionResult> CheckPermissionsAsync(ICommandContext context, CommandInfo command, IServiceProvider services)
 #pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
         {
@@ -219,11 +220,36 @@ namespace WalrusBot2.Modules
                 ulong roleId = 0;
                 try { roleId = Convert.ToUInt64(database["role", role]); }
                 catch { Console.WriteLine($"The role {role} is given in a RequireRole attribute but you haven't added it the the MySQL database!"); }
-                if (guild.Roles.Any(r => r.Id == roleId) ) roleIds.Add(roleId);
+                if (guild.Roles.Any(r => r.Id == roleId)) roleIds.Add(roleId);
             }
-            if(roleIds.Count < 1) return PreconditionResult.FromError($"The guild does not have the role any of the roles required to access this command.");
+            if (roleIds.Count < 1) return PreconditionResult.FromError($"The guild does not have the role any of the roles required to access this command.");
 
-            return user.RoleIds.Any(rId => roleIds.Contains(rId) ) ? PreconditionResult.FromSuccess() : PreconditionResult.FromError("You do not have the sufficient role required to access this command.");
+            return user.RoleIds.Any(rId => roleIds.Contains(rId)) ? PreconditionResult.FromSuccess() : PreconditionResult.FromError("You do not have the sufficient role required to access this command.");
         }
+    }
+
+    public class DailyUpdate
+    {
+        private readonly TimeSpan triggerHour;
+
+        public DailyUpdate(int hour, int minute = 0, int second = 0)
+        {
+            triggerHour = new TimeSpan(hour, minute, second);
+            InitiateAsync();
+        }
+
+        private async void InitiateAsync()
+        {
+            while (true)
+            {
+                var triggerTime = DateTime.Today + triggerHour - DateTime.Now;
+                if (triggerTime < TimeSpan.Zero)
+                    triggerTime = triggerTime.Add(new TimeSpan(24, 0, 0));
+                await Task.Delay(triggerTime);
+                OnTimeTriggered?.Invoke();
+            }
+        }
+
+        public event Action OnTimeTriggered;
     }
 }
