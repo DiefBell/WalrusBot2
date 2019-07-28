@@ -14,6 +14,7 @@ using MimeKit;
 
 using WalrusBot2.Data;
 using System.Net.Mail;
+using Discord;
 
 namespace WalrusBot2.Modules
 {
@@ -63,6 +64,7 @@ namespace WalrusBot2.Modules
         ///     Generate a code for this user, double check that it doesn't exist in the database already (pretty unlikely), save info to database.
         ///     Send email to user with their code.
         /// </sudo>
+        [RequireUserRole(new string[] { "commitee", "tester" })]
         [Command("email", RunMode = RunMode.Async)]
         [Summary("Send a verification email to you with your unique identification code.")]
         [Name("email (DM only)")]
@@ -133,9 +135,9 @@ namespace WalrusBot2.Modules
         /// Go through all members in the guild, check they're not a bot, whether their userId is in the database and if they're verified.
         /// If they aren't, send them a DM.
         /// </sudo>
+        [RequireUserRole(new string[] { "commitee", "tester" })]
         [Command("spam")]
         [Summary("Send a message to all non-verified persons in the server asking them to do so.")]
-        [RequireUserRole(new string[] { "commitee", "tester" })]
         public async Task MessageNonVerifiedAsync()
         {
             await ReplyAsync("Command not yet written...");
@@ -147,6 +149,7 @@ namespace WalrusBot2.Modules
         /// Set their status to verified
         /// Run an update for that user.
         /// </sudo>
+        [RequireUserRole(new string[] { "commitee", "tester" })]
         [Command("code")]
         [Name("code (DM only)")]
         [Summary("Enter the code sent to your email to verify your email address!s")]
@@ -162,7 +165,8 @@ namespace WalrusBot2.Modules
             await ReplyAsync($"Your code is **`{code}`**. Dief hasn't written the rest of this yet ;)");
         }
 
-        [Command("update")]
+        [RequireUserRole(new string[] { "commitee", "tester" })]
+        [Command("update", RunMode = RunMode.Async)]
         [Name("Update")]
         [Summary("Update role and membership information for all members")]
         /// <sudo>
@@ -175,12 +179,24 @@ namespace WalrusBot2.Modules
         ///             Cross-reference with SUSU membership list, give roles
         ///         else: Remove student role and membership roles
         /// </sudo>
-        [RequireUserRole(new string[] { "committee", "tester" })]
         public async Task UpdateAsync()
         {
+            foreach (IGuildUser user in Context.Guild.Users) await UpdateAsync(user.Id);
         }
 
         [RequireUserRole(new string[] { "committee", "tester" })]
+        [Command("update")]
+        [Name("Update")]
+        [Summary("Update role and membership information for a given member")]
+        /// <sudo>
+        /// Are they a bot? continue;
+        /// Do they already exist in the database?
+        ///     Apply any custom roles e.g. alumni
+        ///     Is their email verified?
+        ///         If it ends with @soton.ac.uk etc then give the student role
+        ///         Cross-reference with SUSU membership list, give roles
+        ///     else: Remove student role and membership roles
+        /// </sudo>
         public async Task UpdateAsync(ulong userId)
         {
             //double check they're on the server
