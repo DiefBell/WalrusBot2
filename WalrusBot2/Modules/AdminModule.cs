@@ -104,17 +104,118 @@ namespace WalrusBot2.Modules
 
         #endregion Popularity
 
-        [Command("resetserverperms")]
+        [Command("resetserverperms", RunMode = RunMode.Async)]
         [Name("Reset Server Permissions")]
-        [Summary("Resets the view permissions for all channels in the guild to a specified list of roles, except for the categories and channels provided")]
+        [Summary("Resets the view permissions for all channels in the guild to a specified list of roles, except for the categories provided")]
         /// <psuedo>
         /// Foreach channel:
         ///     Is it in the list of exempt channels? continue;
         ///     Is its category in the list of exempt categories? continue;
         ///     Set it to only be seeable by given roles (e.g. student, alumni, community member)
         /// </psuedo>
-        public async Task ResetGuildPermsAsync(string roles, string categories, string channels)
+        public async Task ResetGuildPermsAsync(string sRoleIds, [Remainder] string sExcludedCategoryIds)
         {
+            await ReplyAsync("Resetting server perms...");
+            List<IRole> blindRoles = new List<IRole>();
+            List<IRole> seeRoles = new List<IRole>();
+
+            foreach (string sRoleId in sRoleIds.Split(' '))
+            {
+                bool see;
+                if (sRoleId[0] == '+') see = true;
+                else if (sRoleId[0] == '-') see = false;
+                else continue;
+
+                string sRoleIdChecked;
+                if (see)
+                {
+                    sRoleIdChecked = sRoleId.Remove(0, 1);
+                }
+                else
+                {
+                    sRoleIdChecked = sRoleId.Remove(0, 1);
+                }
+
+                if (UInt64.TryParse(sRoleIdChecked, out ulong roleId))
+                {
+                    IRole role = Context.Guild.GetRole(roleId);
+                    if (role != null)
+                    {
+                        if (see) seeRoles.Add(role);
+                        else blindRoles.Add(role);
+                        continue;
+                    }
+                    else
+                    {
+                        await ReplyAsync($"Role with id {sRoleId} does not exist on this server!");
+                        return;
+                    }
+                }
+                await ReplyAsync($"Unable to parse role with ID {sRoleId}.");
+                return;
+            }
+
+            List<ulong> excludedCategoryIds = new List<ulong>();
+
+            foreach (string id in sExcludedCategoryIds.Split(' '))
+            {
+                try
+                {
+                    excludedCategoryIds.Add(UInt64.Parse(id));
+                }
+                catch
+                {
+                    await ReplyAsync($"Error: {id} does not appear to be a role!");
+                }
+            }
+
+            OverwritePermissions blindPerms = new OverwritePermissions(
+                viewChannel: PermValue.Deny,
+                sendMessages: PermValue.Deny
+                );
+            OverwritePermissions seePerms = new OverwritePermissions(
+                viewChannel: PermValue.Allow,
+                sendMessages: PermValue.Allow,
+                moveMembers: PermValue.Allow,
+                manageMessages: PermValue.Allow,
+                readMessageHistory: PermValue.Allow,
+                muteMembers: PermValue.Allow
+                );
+
+            int num = 1;
+            foreach (SocketCategoryChannel cat in Context.Guild.CategoryChannels)
+            {
+                Console.WriteLine($"[{num++}] Resetting perms for category {cat.Name}...");
+                if (excludedCategoryIds.Contains(cat.Id)) continue;
+
+                IList<ulong> catRolesIds = cat.PermissionOverwrites.ToList().ConvertAll(x => x.TargetId);
+                IList<IRole> catRoles = new List<IRole>();
+                foreach (ulong id in catRolesIds)
+                {
+                    IRole role = Context.Guild.Roles.Where(r => r.Id == id).FirstOrDefault();
+                    if (role != null) catRoles.Add(role);
+                }
+
+                foreach (IRole guildRole in catRoles)
+                {
+                    await cat.RemovePermissionOverwriteAsync(guildRole);
+                }
+                foreach (IRole blindRole in blindRoles)
+                {
+                    await cat.AddPermissionOverwriteAsync(blindRole, blindPerms);
+                }
+                foreach (IRole seeRole in seeRoles)
+                {
+                    await cat.AddPermissionOverwriteAsync(seeRole, seePerms);
+                }
+
+                foreach (SocketChannel chan in cat.Channels)
+                {
+                    try { await (chan as SocketTextChannel).SyncPermissionsAsync(); } catch { }
+                }
+            }
+
+            await ReplyAsync("Server permissions reset...");
         }
     }
 }

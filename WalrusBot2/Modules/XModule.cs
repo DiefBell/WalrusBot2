@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Discord;
@@ -238,28 +239,42 @@ namespace WalrusBot2.Modules
         }
     }
 
-    public class DailyUpdate
+    public class TimerService
     {
-        private readonly TimeSpan triggerHour;
+        private readonly List<TimerInfo> _timers = new List<TimerInfo>();
 
-        public DailyUpdate(int hour, int minute = 0, int second = 0)
+        public class TimerInfo
         {
-            triggerHour = new TimeSpan(hour, minute, second);
-            InitiateAsync();
-        }
-
-        private async void InitiateAsync()
-        {
-            while (true)
+            public TimerInfo(Timer t, TimeCalcFunction st, TimeCalcFunction ri)
             {
-                var triggerTime = DateTime.Today + triggerHour - DateTime.Now;
-                if (triggerTime < TimeSpan.Zero)
-                    triggerTime = triggerTime.Add(new TimeSpan(24, 0, 0));
-                await Task.Delay(triggerTime);
-                OnTimeTriggered?.Invoke();
+                timer = t;
+                StartTime = st;
+                RepeatInterval = ri;
             }
+
+            public Timer timer;
+
+            public delegate TimeSpan TimeCalcFunction();
+
+            public TimeCalcFunction StartTime;
+            public TimeCalcFunction RepeatInterval;
         }
 
-        public event Action OnTimeTriggered;
+        public TimerService()
+        {
+        }
+
+        public void AddTimer(TimerInfo timerInfo)
+        => _timers.Add(timerInfo);
+
+        public void Stop() // 6) Example to make the timer stop running
+        {
+            foreach (TimerInfo t in _timers) t.timer.Change(Timeout.Infinite, Timeout.Infinite);
+        }
+
+        public void Restart() // 7) Example to restart the timer
+        {
+            foreach (TimerInfo t in _timers) t.timer.Change(t.StartTime(), t.RepeatInterval());
+        }
     }
 }

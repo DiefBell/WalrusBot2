@@ -20,12 +20,10 @@ namespace WalrusBot2.Data
         [StringLength(37)]
         public string Username { get; set; }
 
-        [Required]
         [StringLength(254)]
         public string Email { get; set; }
 
         [Column(TypeName = "char")]
-        [Required]
         [StringLength(8)]
         public string Code { get; set; }
 

@@ -24,12 +24,13 @@ using Microsoft.Extensions.DependencyInjection;
 
 using WalrusBot2.Data;
 using WalrusBot2.Services;
+using WalrusBot2.Modules;
 
 namespace WalrusBot2
 {
     internal class Program
     {
-        public static bool Debug = false;
+        public static bool Debug = true;
         private DiscordSocketClient _client;
         private dbWalrusContext _database = new dbWalrusContext();
         private DriveService _driveService;
@@ -188,12 +189,18 @@ namespace WalrusBot2
             services.GetRequiredService<LogService>();
             await services.GetRequiredService<CommandHandlingService>().InitializeAsync(services);
 
-            await _client.LoginAsync(TokenType.Bot, _database["config", Program.Debug ? "botDebugToken" : "botToken"]);
+            string token = _database["config", Program.Debug ? "botDebugToken" : "botToken"];
+            string prefix = _database["config", Program.Debug ? "botDebugPrefix" : "botPrefix"];
+
+            Console.WriteLine($"Debugging is {Debug}");
+            Console.WriteLine($"Connecting to Discord with token {token} and prefix \"{prefix}\"");
+
+            await _client.LoginAsync(TokenType.Bot, token);
             await _client.StartAsync();
 
             #endregion Discord
 
-            await _client.SetActivityAsync(new Game("Half Life 3", ActivityType.Playing));
+            await _client.SetActivityAsync(new Game("Half Life 5", ActivityType.Playing));
             await Task.Delay(-1);
         }
 
@@ -210,7 +217,8 @@ namespace WalrusBot2
                 // Logging
                 .AddLogging()
                 .AddSingleton<LogService>()
-                // Add additional services here...
+                // Timers
+                .AddSingleton(new TimerService())
                 .BuildServiceProvider();
         }
     }

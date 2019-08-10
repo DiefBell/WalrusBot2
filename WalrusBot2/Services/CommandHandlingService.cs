@@ -17,6 +17,7 @@ namespace WalrusBot2.Services
         private IServiceProvider _provider;
 
         #region Command Handling Service
+
         public CommandHandlingService(IServiceProvider provider, DiscordSocketClient client, CommandService commands)
         {
             _client = client;
@@ -26,6 +27,7 @@ namespace WalrusBot2.Services
             _client.MessageReceived += MessageReceived;
             _client.ReactionAdded += ReactionAdded;
             _client.ReactionRemoved += ReactionRemoved;
+            _client.UserJoined += UserJoined;
         }
 
         public async Task InitializeAsync(IServiceProvider provider)
@@ -34,9 +36,11 @@ namespace WalrusBot2.Services
             await _commands.AddModulesAsync(Assembly.GetEntryAssembly(), provider);
             // Add additional initialization code here...
         }
-        #endregion
+
+        #endregion Command Handling Service
 
         #region Event Handlers
+
         private async Task MessageReceived(SocketMessage rawMessage)
         {
             // Ignore system messages and messages from bots
@@ -67,6 +71,7 @@ namespace WalrusBot2.Services
                     IEmbed embed = message.Embeds.ElementAt<IEmbed>(0);
                     if (embed.Footer.ToString() == "React-for-Role Embed" && reaction.UserId != _client.CurrentUser.Id) await ReactForRole.RfrAddRoleAsync(embed, reaction);
                     break;
+
                 default:
                     break;
             }
@@ -83,10 +88,15 @@ namespace WalrusBot2.Services
                     IEmbed embed = message.Embeds.ElementAt<IEmbed>(0);
                     if (embed.Footer.ToString() == "React-for-Role Embed" && reaction.UserId != _client.CurrentUser.Id) await ReactForRole.RfrDelRoleAsync(embed, reaction);
                     break;
+
                 default:
                     break;
             }
         }
-        #endregion
+
+        private async Task UserJoined(SocketGuildUser user)
+            => await VerifyModule.SpamOnJoinAsync(user);
+
+        #endregion Event Handlers
     }
 }
