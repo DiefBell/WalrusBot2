@@ -202,7 +202,7 @@ namespace WalrusBot2.Modules
 
         #region Spam
 
-        [RequireUserRole(new string[] { "commitee", "tester" })]
+        [RequireUserRole(new string[] { "committee", "tester" })]
         [Command("spam")]
         [Summary("Send a message to all non-verified persons in the server asking them to do so.")]
         [RequireContext(ContextType.Guild)]
@@ -211,14 +211,26 @@ namespace WalrusBot2.Modules
             foreach (SocketUser user in Context.Guild.Users)
             {
                 if (user.IsBot) continue;
+                if (user == Context.User) continue;
+                if (user == Context.Guild.Owner) continue;
+
+                Console.WriteLine($"Spamming {user.Username}...");
+
                 string s = user.Id.ToString();
-                WalrusUserInfo userInfo = database.WalrusUserInfoes.Where(x => x.UserId == s).FirstOrDefault();
-                if (userInfo == null ? true : !userInfo.Verified)
+                try
                 {
-                    IDMChannel c = await user.GetOrCreateDMChannelAsync();
-                    await c.SendMessageAsync("Hi there! I noticed that you haven't yet verified your email address with us on our server. " +
-                        "You can do that by sending me `svge!verify email <your email>`, then send me the code you recieve with `svge!verify code <code>`. " +
-                        "You should do it soon so you don't get kicked from the server and can get access to more server channels! ");
+                    WalrusUserInfo userInfo = database.WalrusUserInfoes.Where(x => x.UserId == s).FirstOrDefault();
+                    if (userInfo == null ? true : !userInfo.Verified)
+                    {
+                        IDMChannel c = await user.GetOrCreateDMChannelAsync();
+                        await c.SendMessageAsync("Hi there! I noticed that you haven't yet verified your email address with us on our server. " +
+                            "You can do that by sending me `svge!verify email <your email>`, then send me the code you recieve with `svge!verify code <code>`. " +
+                            "You should do it soon so you don't get kicked from the server and can get access to more server channels! ");
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
                 }
             }
         }

@@ -30,7 +30,7 @@ namespace WalrusBot2
 {
     internal class Program
     {
-        public static bool Debug = true;
+        public static bool Debug = false;
         private DiscordSocketClient _client;
         private dbWalrusContext _database = new dbWalrusContext();
         private DriveService _driveService;

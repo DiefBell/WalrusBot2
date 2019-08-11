@@ -111,7 +111,7 @@ namespace WalrusBot2.Modules
         public async Task RfrRemoveAsync(ulong msgId, string roleDisplayName)
             => await RfrRemoveAsync(Context.Channel, msgId, roleDisplayName);
 
-        [Command("remove, RunMode = RunMode.Async")]
+        [Command("remove", RunMode = RunMode.Async)]
         [Alias("rem", "delete", "del")]
         public async Task RfrRemoveAsync(IMessageChannel channel, ulong msgId, string roleDisplayName)
         {
@@ -197,6 +197,7 @@ namespace WalrusBot2.Modules
 
         public static async Task RfrDelRoleAsync(IEmbed embed, SocketReaction reaction)
         {
+            Console.WriteLine($"Embed fields: {embed.Fields.Count()}");
             EmbedField field = embed.Fields.First(f => f.Value.StartsWith(reaction.Emote.ToString()));
             int atIndex = field.Value.IndexOf('@');
             ulong roleId = Convert.ToUInt64(field.Value.Remove(0, atIndex + 2).TrimEnd('>').ToString());

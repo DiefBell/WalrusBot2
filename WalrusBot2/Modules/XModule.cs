@@ -78,7 +78,7 @@ namespace WalrusBot2.Modules
         [Alias(new string[] { "del", "remove", "rem" })]
         protected async Task<bool> RemoveAsync(IMessageChannel channel, ulong msgId, string footer, string title)
         {
-            if (!(await InitMessage(channel, msgId, new string[] { footer }))) return false;
+            if (!(await InitMessage(channel, msgId, new string[] { footer }, false))) return false;
 
             EmbedBuilder builder = new EmbedBuilder();
             builder.WithAuthor(new EmbedAuthorBuilder().WithName(_oldEmbed.Author.Value.Name).WithIconUrl(_oldEmbed.Author.Value.IconUrl));
