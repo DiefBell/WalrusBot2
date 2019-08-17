@@ -27,9 +27,11 @@ namespace WalrusBot2.Data
         [StringLength(8)]
         public string Code { get; set; }
 
+        [Required]
         [StringLength(1073741823)]
         public string IGNsJSON { get; set; }
 
+        [Required]
         [StringLength(1073741823)]
         public string AdditionalRolesJSON { get; set; }
     }

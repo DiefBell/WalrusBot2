@@ -153,7 +153,9 @@ namespace WalrusBot2.Modules
                         Verified = false,
                         Username = Context.User.Username + "#" + Context.User.Discriminator,
                         Email = email.ToLower(),
-                        Code = RandomString(8)
+                        Code = RandomString(8),
+                        IGNsJSON = @"{}",
+                        AdditionalRolesJSON = @"{}"
                     };
                     if (await SendEmailAsync(email, newUser.Code))
                     {
