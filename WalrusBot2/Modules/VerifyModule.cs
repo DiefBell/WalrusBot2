@@ -287,7 +287,8 @@ namespace WalrusBot2.Modules
         [RequireContext(ContextType.Guild)]
         public async Task UpdateAsync()
         {
-            foreach (IGuildUser user in Context.Guild.Users) await UpdateAsync(user as SocketGuildUser, Context.Guild, database);
+            List<SocketGuildUser> users = Context.Guild.Users.ToList();
+            foreach (IGuildUser user in users.Except(new List<SocketGuildUser> { Context.User as SocketGuildUser })) await UpdateAsync(user as SocketGuildUser, Context.Guild, database);
             await ReplyAsync("Guild user data updated...");
         }
 
@@ -313,29 +314,46 @@ namespace WalrusBot2.Modules
         // called by daily function (via above static function) or by the code command
         private static async Task UpdateAsync(SocketGuildUser user, SocketGuild guild, dbWalrusContext database)  // not callable as a Discord command
         {
-            Console.WriteLine("Updating...");
-            Console.WriteLine($"Updating user information for {user.Nickname ?? user.Username}...");
+            //Console.WriteLine("Updating...");
+            Console.WriteLine($"Updating user information for {user.Nickname ?? user.Username}:");
 
             if (user.IsBot) return;
             string userId = user.Id.ToString();
             WalrusUserInfo userInfo = database.WalrusUserInfoes.Where(x => x.UserId == userId).FirstOrDefault();
             if (userInfo == null)
             {
-                Console.WriteLine($"User {user.Nickname ?? user.Username} does not exist in the database!");
+                Console.WriteLine($"\tUser {user.Nickname ?? user.Username} does not exist in the database!");
                 List<IRole> roles = (user as IGuildUser).RoleIds.ToList().ConvertAll(x => guild.GetRole(x) as IRole);
-                await RemoveFilteredRolesAsync(user as IGuildUser, roles);
+                Console.WriteLine($"\tNumber of roles: {roles.Count}");
+                foreach (IRole role in roles)
+                {
+                    if (!role.IsManaged && !(role == guild.EveryoneRole) && !role.Name.Contains("CPS"))
+                    {
+                        try { await user.RemoveRoleAsync(role); }
+                        catch { Console.WriteLine($"\tFailed to remove role {role.Name}."); }
+                    }
+                }
                 return;
             }
 
-            Console.WriteLine("Getting custom roles");
+            Console.WriteLine("\tGetting custom roles");
             List<ulong> customRoleIds = GetAdditionalRoleIds(userInfo, guild as SocketGuild, database);
 
             if (!userInfo.Verified)
             {
-                Console.WriteLine($"User {user.Nickname ?? user.Username} is not verified!");
+                Console.WriteLine($"\tUser {user.Nickname ?? user.Username} is not verified!");
                 // remove everything that isn't a custom role
                 List<IRole> roles = (user as IGuildUser).RoleIds.Except(customRoleIds).ToList().ConvertAll(x => guild.GetRole(x) as IRole);
-                await RemoveFilteredRolesAsync(user, roles);
+                roles.Remove(guild.EveryoneRole);
+                Console.WriteLine($"\tNumber of roles: {roles.Count}");
+                foreach (IRole role in roles)
+                {
+                    if (!role.IsManaged && !(role == guild.EveryoneRole) && !role.Name.Contains("CPS"))
+                    {
+                        try { await user.RemoveRoleAsync(role); }
+                        catch { Console.WriteLine($"\tFailed to remove role {role.Name}."); }
+                    }
+                }
                 return;
             }
 
@@ -348,12 +366,10 @@ namespace WalrusBot2.Modules
                 }
                 else
                 {
+                    Console.WriteLine("\tRemoving student role...");
                     await user.RemoveRoleAsync(studentRole);
                 }
             }
-
-            //get additional roles only returns IDs for roles that exist in the guild so no need to check again
-            await user.AddRolesAsync(customRoleIds.ConvertAll(id => guild.GetRole(id)));
 
             WalrusMembershipList membership = database.WalrusMembershipLists.Where(x => x.Email == userInfo.Email).FirstOrDefault();
             IRole communityMembershipRole = ParseRole(database, "communityMember", guild as SocketGuild);
@@ -377,6 +393,14 @@ namespace WalrusBot2.Modules
                 if (communityMembershipRole != null) await user.RemoveRoleAsync(communityMembershipRole);
                 if (dlcMembershipRole != null) await user.RemoveRoleAsync(dlcMembershipRole);
                 if (gotyMembershipRole != null) await user.RemoveRoleAsync(gotyMembershipRole);
+            }
+
+            //get additional roles only returns IDs for roles that exist in the guild so no need to check again
+
+            foreach (IRole role in customRoleIds.ConvertAll(id => guild.GetRole(id)))
+            {
+                try { await user.AddRoleAsync(role); }
+                catch { Console.WriteLine($"\tFailed to add role {role.Name}."); }
             }
         }
 
@@ -406,17 +430,29 @@ namespace WalrusBot2.Modules
 
                     if (userInfo == null)  // not verified, email not even in db
                     {
-                        List<IRole> roles = user.RoleIds.ToList().ConvertAll(x => Context.Guild.GetRole(x)).Except(
-                            new List<IRole> { Context.Guild.EveryoneRole }).ToList();
-                        await RemoveFilteredRolesAsync(user, roles);
+                        List<IRole> roles = user.RoleIds.ToList().ConvertAll(x => Context.Guild.GetRole(x)).ToList<IRole>();
+                        foreach (IRole role in roles)
+                        {
+                            if (!role.IsManaged && !(role == Context.Guild.EveryoneRole) && !role.Name.Contains("CPS"))
+                            {
+                                try { await user.RemoveRoleAsync(role); }
+                                catch { Console.WriteLine($"\tFailed to remove role {role.Name}."); }
+                            }
+                        }
                         continue;
                     }
 
                     if (userInfo.AdditionalRolesJSON == null)  // no custom roles
                     {
-                        List<IRole> roles = user.RoleIds.ToList().ConvertAll(x => Context.Guild.GetRole(x)).Except(
-                            new List<IRole> { Context.Guild.EveryoneRole }).ToList();
-                        await RemoveFilteredRolesAsync(user, roles);
+                        List<IRole> roles = user.RoleIds.ToList().ConvertAll(x => Context.Guild.GetRole(x)).ToList<IRole>();
+                        foreach (IRole role in roles)
+                        {
+                            if (!role.IsManaged && !(role == Context.Guild.EveryoneRole) && !role.Name.Contains("CPS"))
+                            {
+                                try { await user.RemoveRoleAsync(role); }
+                                catch { Console.WriteLine($"\tFailed to remove role {role.Name}."); }
+                            }
+                        }
 
                         database.WalrusUserInfoes.Remove(userInfo);
                     }
@@ -426,9 +462,15 @@ namespace WalrusBot2.Modules
                         List<ulong> customRoleIds = GetAdditionalRoleIds(userInfo, Context.Guild, database);
 
                         // cast to IRole list, excluding custom roles, and remove them from user
-                        List<IRole> roles = user.RoleIds.Except(customRoleIds).ToList().ConvertAll(x => Context.Guild.GetRole(x)).Except(
-                            new List<IRole> { Context.Guild.EveryoneRole }).ToList();
-                        await RemoveFilteredRolesAsync(user, roles);
+                        List<IRole> roles = user.RoleIds.Except(customRoleIds).ToList().ConvertAll(x => Context.Guild.GetRole(x)).ToList<IRole>();
+                        foreach (IRole role in roles)
+                        {
+                            if (!role.IsManaged && !(role == Context.Guild.EveryoneRole) && !role.Name.Contains("CPS"))
+                            {
+                                try { await user.RemoveRoleAsync(role); }
+                                catch { Console.WriteLine($"\tFailed to remove role {role.Name}."); }
+                            }
+                        }
 
                         // reset their database entry
                         userInfo.Verified = false;
@@ -473,17 +515,6 @@ namespace WalrusBot2.Modules
 
         #region Utility Functions
 
-        private static async Task RemoveFilteredRolesAsync(IGuildUser user, List<IRole> roles)
-        {
-            IList<IRole> removeRoles = new List<IRole>();
-            IList<ulong> forbiddenRoleIds = new List<ulong> { 585551455998443525, 519226054439731200 };
-            foreach (IRole role in roles)
-            {
-                if (!role.Name.Contains("CPS") && !forbiddenRoleIds.Contains(role.Id)) removeRoles.Add(role);
-            }
-            await user.RemoveRolesAsync(roles);
-        }
-
         /// <summary>
         /// Sends an email to the given email address, substituting the given code into the email template.
         /// </summary>
@@ -523,8 +554,21 @@ namespace WalrusBot2.Modules
             List<ulong> customRoles = new List<ulong>();
             if (userInfo.AdditionalRolesJSON != null)
             {
-                List<string> customRoleStrings = userInfo.AdditionalRolesJSON.Split(',').ToList().ConvertAll(x => x.Trim(' '));
+                // not going to try as *should* always be valid JSON if added using a command
+                JObject customRolesJason = JObject.Parse(userInfo.AdditionalRolesJSON);
 
+                foreach (var role in customRolesJason)
+                {
+                    if (UInt64.TryParse(role.Value.ToString(), out ulong id))
+                    {
+                        if (guild.Roles.Any(r => r.Id == id))
+                        {
+                            customRoles.Add(id);
+                        }
+                    }
+                }
+
+                /*
                 foreach (string s in customRoleStrings)
                 {
                     string idString = database["role", s];
@@ -535,7 +579,7 @@ namespace WalrusBot2.Modules
                             if (guild.Roles.Any(r => r.Id == id)) customRoles.Add(id);
                         }
                     }
-                }
+                }*/
             }
             return customRoles;
         }
