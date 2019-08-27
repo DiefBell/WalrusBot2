@@ -19,6 +19,8 @@ using Discord;
 using Discord.WebSocket;
 using Newtonsoft.Json.Linq;
 using System.Threading;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace WalrusBot2.Modules
 {
@@ -497,6 +499,31 @@ namespace WalrusBot2.Modules
         }
 
         #endregion Reset
+
+        #region IP Verification
+
+        [Command("ip")]
+        [RequireContext(ContextType.DM)]
+        public async Task IpAsync()
+        {
+            MD5 hasher = MD5.Create();
+            hasher.ComputeHash(Encoding.UTF8.GetBytes(Context.User.Id.ToString() + database["config", "authSalt"]));
+            byte[] idHash = hasher.Hash;
+
+            StringBuilder code = new StringBuilder();
+            foreach (byte b in idHash)
+            {
+                code.Append(b.ToString("x2"));
+            }
+
+            string link = "https://auth.svge.uk" +
+                $"?user={Context.User.Id.ToString()}&" +
+                $"code={code.ToString()}";
+
+            await ReplyAsync(link);
+        }
+
+        #endregion IP Verification
 
         #region Static Members
 
