@@ -94,7 +94,7 @@ namespace WalrusBot2.Modules
             if (await AddAsync(channel, msgId, "React-for-Role Embed", roleDisplayName, roleEmote.ToString() + " " + role.Mention, position))
             {
                 await _msg.AddReactionAsync(emote);
-                await ReplyAndDeleteAsync(database["string", "succRfrAdd"], timeout: TimeSpan.FromSeconds(2));
+                await ReplyAsync(database["string", "succRfrAdd"]);
             }
 
             // AddAsync() contains all of the error reporting, so this line is unnecessary

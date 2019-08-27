@@ -100,6 +100,7 @@
     <Compile Include="Modules\VerifyModule.cs" />
     <Compile Include="Modules\HelpModule.cs" />
     <Compile Include="Modules\MiscModule.cs" />
+    <Compile Include="Modules\VoteModule.cs" />
     <Compile Include="Modules\XModule.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Services\CommandHandlingService.cs" />

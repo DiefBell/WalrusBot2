@@ -37,7 +37,8 @@ namespace WalrusBot2.Modules
         [Command("permarole")]
         public async Task PermaRoleAsync(SocketGuildUser user, string roleName, ulong roleId)
         {
-            if (!(Context.Guild.Roles.Any(r => r.Id == roleId)))
+            IRole role = Context.Guild.GetRole(roleId);
+            if (role == null)
             {
                 await ReplyAsync("That role doesn't appear to exist on this server! (honestly not sure how you even managed that tbh...)");
                 return;
@@ -48,7 +49,7 @@ namespace WalrusBot2.Modules
             WalrusUserInfo userInfo = database.WalrusUserInfoes.Where(x => x.UserId == userIdString).FirstOrDefault();
             if (userInfo == null)
             {
-                userInfo = new WalrusUserInfo
+                userInfo = database.WalrusUserInfoes.Add(new WalrusUserInfo
                 {
                     UserId = user.Id.ToString(),
                     Verified = false,
@@ -57,15 +58,19 @@ namespace WalrusBot2.Modules
                     Code = null,
                     IGNsJSON = @"{}",
                     AdditionalRolesJSON = @"{}"
-                };
+                });
             }
 
             // not running checks as should always be valid JSON
             JObject additionalRolesJson = JObject.Parse(userInfo.AdditionalRolesJSON);
-            additionalRolesJson.Add(roleName, roleId.ToString());
-            userInfo.AdditionalRolesJSON = additionalRolesJson.ToString();
+            if (!additionalRolesJson.ContainsKey(roleName))
+            {
+                additionalRolesJson.Add(roleName, roleId.ToString());
+                userInfo.AdditionalRolesJSON = additionalRolesJson.ToString();
 
-            await database.SaveChangesAsync();
+                await database.SaveChangesAsync();
+                await user.AddRoleAsync(role);
+            }
             await ReplyAsync("Permanent role added to user :)");
         }
     }

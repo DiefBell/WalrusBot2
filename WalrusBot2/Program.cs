@@ -183,7 +183,11 @@ namespace WalrusBot2
 
             #region Discord
 
-            _client = new DiscordSocketClient();
+            var discordConfig = new DiscordSocketConfig();
+            discordConfig.AlwaysDownloadUsers = true;
+            discordConfig.MessageCacheSize = 5;
+
+            _client = new DiscordSocketClient(discordConfig);
 
             var services = ConfigureServices();
             services.GetRequiredService<LogService>();

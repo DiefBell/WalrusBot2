@@ -346,7 +346,6 @@ namespace WalrusBot2.Modules
                 Console.WriteLine($"\tUser {user.Nickname ?? user.Username} is not verified!");
                 // remove everything that isn't a custom role
                 List<IRole> roles = (user as IGuildUser).RoleIds.Except(customRoleIds).ToList().ConvertAll(x => guild.GetRole(x) as IRole);
-                roles.Remove(guild.EveryoneRole);
                 Console.WriteLine($"\tNumber of roles: {roles.Count}");
                 foreach (IRole role in roles)
                 {
@@ -354,6 +353,14 @@ namespace WalrusBot2.Modules
                     {
                         try { await user.RemoveRoleAsync(role); }
                         catch { Console.WriteLine($"\tFailed to remove role {role.Name}."); }
+                    }
+                }
+                foreach (IRole role in customRoleIds.ConvertAll(id => guild.GetRole(id)))
+                {
+                    if (!role.IsManaged && !(role == guild.EveryoneRole))
+                    {
+                        try { await user.AddRoleAsync(role); }
+                        catch { Console.WriteLine($"\tFailed to add customer role {role.Name}"); }
                     }
                 }
                 return;
