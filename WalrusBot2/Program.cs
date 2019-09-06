@@ -1,6 +1,4 @@
-﻿#define GOOGLE
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.IO;
@@ -30,6 +28,7 @@ namespace WalrusBot2
 {
     internal class Program
     {
+        private static bool _withGoogle = true;
         public static bool Debug = true;
         private DiscordSocketClient _client;
         private dbWalrusContext _database = new dbWalrusContext();
@@ -50,6 +49,7 @@ namespace WalrusBot2
 
             Dictionary<string, string> parameters = args.Select(a => a.Split('=')).ToDictionary(a => a[0], a => a.Length == 2 ? a[1] : null);
             if (parameters.Keys.Contains("debug")) Debug = parameters["debug"] == "true" ? true : false;
+            if (parameters.Keys.Contains("google")) _withGoogle = parameters["google"] == "true" ? true : false;
             if (parameters.Keys.Contains("server"))  // assuming you'd type them all in
             {
                 server = parameters["server"];
@@ -117,69 +117,68 @@ namespace WalrusBot2
 
         public async Task MainAsync()
         {
-#if GOOGLE
-
             #region Google
 
-            #region OAuth2 Login
+            if (_withGoogle)
+            {
+                #region OAuth2 Login
 
-            string[] _scopes = {
+                string[] _scopes = {
                 GmailService.Scope.GmailSend,
                 DriveService.Scope.DriveReadonly,
                 DriveService.Scope.DriveMetadataReadonly
             };
-            using (var fs = new FileStream(_database["config", "googleCredPath"], FileMode.Open, FileAccess.Read))
-            {
-                GoogleCredential = GoogleWebAuthorizationBroker.AuthorizeAsync(
-                    GoogleClientSecrets.Load(fs).Secrets, _scopes, "user", CancellationToken.None, new FileDataStore(_database["config", "googleTokenPath"], true)).Result;
-            }
-            Console.WriteLine("Got token.");
-
-            #endregion OAuth2 Login
-
-            #region Download Email Template
-
-            _driveService = new DriveService(new BaseClientService.Initializer()
-            {
-                HttpClientInitializer = GoogleCredential,
-                ApplicationName = _database["config", "googleAppName"]
-            });
-            var expReq = _driveService.Files.Export(_database["config", "emailTemplateId"], "text/plain");
-            var stream = new MemoryStream();
-            expReq.MediaDownloader.ProgressChanged += (IDownloadProgress progress)
-                =>
-            {
-                switch (progress.Status)
+                using (var fs = new FileStream(_database["config", "googleCredPath"], FileMode.Open, FileAccess.Read))
                 {
-                    case DownloadStatus.Downloading:
-                        {
-                            Console.WriteLine(progress.BytesDownloaded);
-                            break;
-                        }
-                    case DownloadStatus.Completed:
-                        {
-                            Console.WriteLine("Verification email file has been downloaded!\n");
-                            break;
-                        }
-                    case DownloadStatus.Failed:
-                        {
-                            Console.WriteLine(">> The download of the verification email file has failed! D: Try adding it manually! <<\n");
-                            break;
-                        }
+                    GoogleCredential = GoogleWebAuthorizationBroker.AuthorizeAsync(
+                        GoogleClientSecrets.Load(fs).Secrets, _scopes, "user", CancellationToken.None, new FileDataStore(_database["config", "googleTokenPath"], true)).Result;
                 }
-            };
-            await expReq.DownloadAsync(stream);
+                Console.WriteLine("Got token.");
 
-            using (FileStream fs = new FileStream(_database["config", "emailTemplatePath"], FileMode.OpenOrCreate, FileAccess.Write))
-            {
-                stream.WriteTo(fs);
+                #endregion OAuth2 Login
+
+                #region Download Email Template
+
+                _driveService = new DriveService(new BaseClientService.Initializer()
+                {
+                    HttpClientInitializer = GoogleCredential,
+                    ApplicationName = _database["config", "googleAppName"]
+                });
+                var expReq = _driveService.Files.Export(_database["config", "emailTemplateId"], "text/plain");
+                var stream = new MemoryStream();
+                expReq.MediaDownloader.ProgressChanged += (IDownloadProgress progress)
+                    =>
+                {
+                    switch (progress.Status)
+                    {
+                        case DownloadStatus.Downloading:
+                            {
+                                Console.WriteLine(progress.BytesDownloaded);
+                                break;
+                            }
+                        case DownloadStatus.Completed:
+                            {
+                                Console.WriteLine("Verification email file has been downloaded!\n");
+                                break;
+                            }
+                        case DownloadStatus.Failed:
+                            {
+                                Console.WriteLine(">> The download of the verification email file has failed! D: Try adding it manually! <<\n");
+                                break;
+                            }
+                    }
+                };
+                await expReq.DownloadAsync(stream);
+
+                using (FileStream fs = new FileStream(_database["config", "emailTemplatePath"], FileMode.OpenOrCreate, FileAccess.Write))
+                {
+                    stream.WriteTo(fs);
+                }
+
+                #endregion Download Email Template
             }
-
-            #endregion Download Email Template
 
             #endregion Google
-
-#endif
 
             #region Discord
 

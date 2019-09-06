@@ -1,5 +1,6 @@
 ﻿using Discord;
 using Discord.Commands;
+using Discord.Rest;
 using Discord.WebSocket;
 using System;
 using System.Linq;
@@ -69,7 +70,16 @@ namespace WalrusBot2.Services
                     break;  // might do something with this eventually
                 case 1:
                     IEmbed embed = message.Embeds.ElementAt<IEmbed>(0);
-                    if (embed.Footer.ToString() == "React-for-Role Embed" && reaction.UserId != _client.CurrentUser.Id) await ReactForRole.RfrAddRoleAsync(embed, reaction);
+                    if (embed.Footer.ToString() == "React-for-Role Embed" && reaction.UserId != _client.CurrentUser.Id)
+                    {
+                        await ReactForRole.RfrAddRoleAsync(embed, reaction);
+                        break;
+                    }
+                    if (embed.Footer.ToString().Substring(0, 4) == "Vote" && reaction.UserId != _client.CurrentUser.Id)
+                    {
+                        await VoteModule.AddVote(message as IUserMessage, reaction);
+                        break;
+                    }
                     break;
 
                 default:
@@ -86,7 +96,16 @@ namespace WalrusBot2.Services
                     break;  // might do something with this eventually
                 case 1:
                     IEmbed embed = message.Embeds.ElementAt<IEmbed>(0);
-                    if (embed.Footer.ToString() == "React-for-Role Embed" && reaction.UserId != _client.CurrentUser.Id) await ReactForRole.RfrDelRoleAsync(embed, reaction);
+                    if (embed.Footer.ToString() == "React-for-Role Embed" && reaction.UserId != _client.CurrentUser.Id)
+                    {
+                        await ReactForRole.RfrDelRoleAsync(embed, reaction);
+                        break;
+                    }
+                    if (embed.Footer.ToString().Substring(0, 4) == "Vote" && reaction.UserId != _client.CurrentUser.Id)
+                    {
+                        await VoteModule.DelVote(message as IUserMessage, reaction);
+                        break;
+                    }
                     break;
 
                 default:

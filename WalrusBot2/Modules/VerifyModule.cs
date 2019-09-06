@@ -207,12 +207,12 @@ namespace WalrusBot2.Modules
         #region Spam
 
         [RequireUserRole(new string[] { "committee", "tester" })]
-        [Command("spam")]
+        [Command("spam", RunMode = RunMode.Async)]
         [Summary("Send a message to all non-verified persons in the server asking them to do so.")]
         [RequireContext(ContextType.Guild)]
         public async Task MessageNonVerifiedAsync()
         {
-            foreach (SocketUser user in Context.Guild.Users)
+            foreach (SocketGuildUser user in Context.Guild.Users)
             {
                 if (user.IsBot) continue;
                 if (user == Context.User) continue;
@@ -224,12 +224,26 @@ namespace WalrusBot2.Modules
                 try
                 {
                     WalrusUserInfo userInfo = database.WalrusUserInfoes.Where(x => x.UserId == s).FirstOrDefault();
-                    if (userInfo == null ? true : !userInfo.Verified)
+                    if (userInfo == null)
                     {
-                        IDMChannel c = await user.GetOrCreateDMChannelAsync();
+                        IDMChannel c = await (user as SocketUser).GetOrCreateDMChannelAsync();
                         await c.SendMessageAsync("Hi there! I noticed that you haven't yet verified your email address with us on our server. " +
                             "You can do that by sending me `svge!verify email <your email>`, then send me the code you recieve with `svge!verify code <code>`. " +
                             "You should do it soon so you don't get kicked from the server and can get access to more server channels! ");
+                    }
+                    else
+                    {
+                        if (UInt64.TryParse(database["role", "student"], out ulong studentRoleId)
+                        && UInt64.TryParse(database["role", "communityMember"], out ulong commMemberId))
+                        {
+                            if (user.Roles.Any(r => r.Id == studentRoleId) && !user.Roles.Any(r => r.Id == commMemberId))
+                            {
+                                IDMChannel c = await (user as SocketUser).GetOrCreateDMChannelAsync();
+                                await c.SendMessageAsync("Hi there! I noticed that you've verified your email with us but haven't yet got membership with us on SUSU, which you can get for free! " +
+                                    "This really helps us out when we're asking SUSU for support or funding, so please go grab the free Community Membership here: " +
+                                    "https://www.susu.org/groups/southampton-university-esports-society");
+                            }
+                        }
                     }
                 }
                 catch (Exception e)
@@ -291,6 +305,7 @@ namespace WalrusBot2.Modules
         [RequireContext(ContextType.Guild)]
         public async Task UpdateAsync()
         {
+            await ReplyAsync("Updating user information for all server members. This may take a while (10+ min), please wait...");
             List<SocketGuildUser> users = Context.Guild.Users.ToList();
             foreach (IGuildUser user in users.Except(new List<SocketGuildUser> { Context.User as SocketGuildUser })) await UpdateAsync(user as SocketGuildUser, Context.Guild, database);
             await ReplyAsync("Guild user data updated...");
