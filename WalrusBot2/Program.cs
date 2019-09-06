@@ -49,7 +49,7 @@ namespace WalrusBot2
 
             Dictionary<string, string> parameters = args.Select(a => a.Split('=')).ToDictionary(a => a[0], a => a.Length == 2 ? a[1] : null);
             if (parameters.Keys.Contains("debug")) Debug = parameters["debug"] == "true" ? true : false;
-            if (parameters.Keys.Contains("google")) _withGoogle = parameters["google"] == "true" ? true : false;
+            if (parameters.Keys.Contains("google")) _withGoogle = parameters["google"] == "false" ? false : true;
             if (parameters.Keys.Contains("server"))  // assuming you'd type them all in
             {
                 server = parameters["server"];
