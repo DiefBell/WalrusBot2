@@ -37,6 +37,7 @@ namespace WalrusBot2.Modules
                 $"Either type \"no\" or the channel ID.");
 
             SocketMessage reply;
+            voteName = voteName.Trim();
 
             #region Voice Channel
 
@@ -185,6 +186,7 @@ namespace WalrusBot2.Modules
                 {
                     string name = reply.Content.Split('+')[0].Trim(' ');
                     string desc = reply.Content.Split('+')[1].Trim(' ');
+                    //name = name.Replace('-', '_');
                     options.Add(new OptionInfo() { name = name, description = desc });
                     string optionInfoString = $"The vote option **{reply.Content.Split('+')[0]}** has been added to the list of choices.";
 
@@ -276,16 +278,24 @@ namespace WalrusBot2.Modules
             var users = Context.Guild.Users.Where(u => u.Roles.Intersect(roles).Any()).Distinct();
             foreach (SocketUser user in users)
             {
+                if (user.IsBot) continue;
                 builder.WithFooter($"Vote - {voteName}");
 
                 var dmChannel = await user.GetOrCreateDMChannelAsync();
-                var msg = await dmChannel.SendMessageAsync(
-                    "You've been asked to participate in the following vote. " +
-                    "To vote, simply click on the corresponding reaction to this message. " +
-                    $"You may vote for up to {numVotes} option{(numVotes > 1 ? "s" : "")}.",
-                    false, builder.Build());
+                try
+                {
+                    var msg = await dmChannel.SendMessageAsync(
+                        "You've been asked to participate in the following vote. " +
+                        "To vote, simply click on the corresponding reaction to this message. " +
+                        $"You may vote for up to {numVotes} option{(numVotes > 1 ? "s" : "")}.",
+                        false, builder.Build());
 
-                await msg.AddReactionsAsync(reactions.ToArray());
+                    await msg.AddReactionsAsync(reactions.ToArray());
+                }
+                catch
+                {
+                    //
+                }
             }
             await ReplyAsync($"Your vote has been added and sent out to {users.Count()} individuals!");
 
@@ -348,7 +358,7 @@ namespace WalrusBot2.Modules
                 {
                     voteUsers.AddRange(v.Value);
                 }
-                await ReplyAsync($"This vote has had {voteUsers} votes cast by {voteUsers.Distinct()} people.");
+                await ReplyAsync($"This vote has had {voteUsers.Count} votes cast by {voteUsers.Distinct()} people.");
             }
         }
 
@@ -359,7 +369,8 @@ namespace WalrusBot2.Modules
         public static async Task AddVote(IUserMessage msg, SocketReaction reaction)
         {
             Embed embed = msg.Embeds.ElementAt(0) as Embed;
-            string voteName = embed.Footer.ToString().Split('-')[1].Trim(' ');
+            string voteName = embed.Footer.ToString().Split(new[] { '-' }, 2)[1].Trim();
+            //Console.WriteLine($"Vote added for {voteName}.");
 
             EmbedBuilder builder = embed.ToEmbedBuilder();
 
@@ -387,7 +398,7 @@ namespace WalrusBot2.Modules
 
             var fieldBuilder = builder.Fields.Where(f => f.Name[0] == optionNumber).FirstOrDefault();
             if (fieldBuilder == null) return; // probably means they've reacted with something else or a number that isn't an option
-            string optionName = fieldBuilder.Build().Name.Split('-')[1].Trim(' ');
+            string optionName = fieldBuilder.Build().Name.Split(new[] { '-' }, 2)[1].Trim(' ');
 
             // check if they've already voted for this, return if they have
             if (!vote.Votes.ContainsKey(optionName)) return; // probably some error with another react being used
@@ -423,7 +434,8 @@ namespace WalrusBot2.Modules
         public static async Task DelVote(IUserMessage msg, SocketReaction reaction)
         {
             Embed embed = msg.Embeds.ElementAt(0) as Embed;
-            string voteName = embed.Footer.ToString().Split('-')[1].Trim(' ');
+            string voteName = embed.Footer.ToString().Split(new[] { '-' })[1].Trim();
+            //Console.WriteLine($"Vote removed for {voteName}.");
 
             EmbedBuilder builder = embed.ToEmbedBuilder();
 
@@ -443,7 +455,7 @@ namespace WalrusBot2.Modules
 
             var fieldBuilder = builder.Fields.Where(f => f.Name[0] == optionNumber).FirstOrDefault();
             if (fieldBuilder == null) return; // probably means they've reacted with something else or a number that isn't an option
-            string optionName = fieldBuilder.Build().Name.Split('-')[1].Trim(' ');
+            string optionName = fieldBuilder.Build().Name.Split(new[] { '-' }, 2)[1].Trim(' ');
 
             // check if they've already voted for this, return if they haven't (thpugh not sure how this case could occur)
             if (!vote.Votes.ContainsKey(optionName)) return; // probably some error with another react being used
@@ -467,7 +479,7 @@ namespace WalrusBot2.Modules
                     char existingOption = r.Key.ToString().Trim('?')[0];
                     var existingFieldBuilder = builder.Fields.Where(f => f.Name[0] == existingOption).FirstOrDefault();
                     if (existingFieldBuilder == null) continue; // probably means they've reacted with something else or a number that isn't an option
-                    string existingOptionName = existingFieldBuilder.Build().Name.Split('-')[1].Trim(' ');
+                    string existingOptionName = existingFieldBuilder.Build().Name.Split(new[] { '-' }, 2)[1].Trim(' ');
 
                     if (vote.Votes[existingOptionName].Contains(reaction.UserId)) continue;
                     vote.Votes[existingOptionName].Add(reaction.UserId);

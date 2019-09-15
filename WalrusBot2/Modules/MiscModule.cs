@@ -47,5 +47,11 @@ namespace WalrusBot2.Modules
         [RequireUserRole(new string[] { "commitee", "tester" })]
         public async Task Bork()
             => await ReplyAsync("Woof woof", true);
+
+        /*
+        [Command("test")]
+        public async Task TestAsync()
+            => await ReplyAsync("this - is - a - test".Split(new[] { '-' }, 2)[1]);
+            */
     }
 }
