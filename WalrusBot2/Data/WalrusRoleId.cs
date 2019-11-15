@@ -10,10 +10,11 @@ namespace WalrusBot2.Data
     public partial class WalrusRoleId
     {
         [Key]
-        [StringLength(16)]
+        [StringLength(32)]
         public string Role { get; set; }
 
-        [StringLength(16)]
+        [Required]
+        [StringLength(32)]
         public string Id { get; set; }
     }
 }

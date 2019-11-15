@@ -1,5 +1,6 @@
 ﻿using Discord;
 using Discord.Commands;
+using Discord.Rest;
 using Discord.WebSocket;
 using System;
 using System.Linq;
@@ -17,6 +18,7 @@ namespace WalrusBot2.Services
         private IServiceProvider _provider;
 
         #region Command Handling Service
+
         public CommandHandlingService(IServiceProvider provider, DiscordSocketClient client, CommandService commands)
         {
             _client = client;
@@ -26,6 +28,7 @@ namespace WalrusBot2.Services
             _client.MessageReceived += MessageReceived;
             _client.ReactionAdded += ReactionAdded;
             _client.ReactionRemoved += ReactionRemoved;
+            _client.UserJoined += UserJoined;
         }
 
         public async Task InitializeAsync(IServiceProvider provider)
@@ -34,16 +37,18 @@ namespace WalrusBot2.Services
             await _commands.AddModulesAsync(Assembly.GetEntryAssembly(), provider);
             // Add additional initialization code here...
         }
-        #endregion
+
+        #endregion Command Handling Service
 
         #region Event Handlers
+
         private async Task MessageReceived(SocketMessage rawMessage)
         {
             // Ignore system messages and messages from bots
             if (!(rawMessage is SocketUserMessage message)) return;
             if (message.Source != MessageSource.User) return;
 
-            dbContextWalrus db = new dbContextWalrus();
+            dbWalrusContext db = new dbWalrusContext();
             int argPos = 0;
 
             if (!message.HasStringPrefix(db["config", Program.Debug ? "botDebugPrefix" : "botPrefix"], ref argPos) && !message.HasMentionPrefix(_client.CurrentUser, ref argPos)) return;
@@ -65,8 +70,18 @@ namespace WalrusBot2.Services
                     break;  // might do something with this eventually
                 case 1:
                     IEmbed embed = message.Embeds.ElementAt<IEmbed>(0);
-                    if (embed.Footer.ToString() == "React-for-Role Embed" && reaction.UserId != _client.CurrentUser.Id) await ReactForRole.RfrAddRoleAsync(embed, reaction);
+                    if (embed.Footer.ToString() == "React-for-Role Embed" && reaction.UserId != _client.CurrentUser.Id)
+                    {
+                        await ReactForRole.RfrAddRoleAsync(embed, reaction);
+                        break;
+                    }
+                    if (embed.Footer.ToString().Substring(0, 4) == "Vote" && reaction.UserId != _client.CurrentUser.Id)
+                    {
+                        await VoteModule.AddVote(message as IUserMessage, reaction);
+                        break;
+                    }
                     break;
+
                 default:
                     break;
             }
@@ -81,12 +96,26 @@ namespace WalrusBot2.Services
                     break;  // might do something with this eventually
                 case 1:
                     IEmbed embed = message.Embeds.ElementAt<IEmbed>(0);
-                    if (embed.Footer.ToString() == "React-for-Role Embed" && reaction.UserId != _client.CurrentUser.Id) await ReactForRole.RfrDelRoleAsync(embed, reaction);
+                    if (embed.Footer.ToString() == "React-for-Role Embed" && reaction.UserId != _client.CurrentUser.Id)
+                    {
+                        await ReactForRole.RfrDelRoleAsync(embed, reaction);
+                        break;
+                    }
+                    if (embed.Footer.ToString().Substring(0, 4) == "Vote" && reaction.UserId != _client.CurrentUser.Id)
+                    {
+                        await VoteModule.DelVote(message as IUserMessage, reaction);
+                        break;
+                    }
                     break;
+
                 default:
                     break;
             }
         }
-        #endregion
+
+        private async Task UserJoined(SocketGuildUser user)
+            => await VerifyModule.SpamOnJoinAsync(user);
+
+        #endregion Event Handlers
     }
 }

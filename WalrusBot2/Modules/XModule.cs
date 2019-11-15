@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Discord;
@@ -16,8 +17,9 @@ namespace WalrusBot2.Modules
     {
         public static CommandService Service;
 
-        protected dbContextWalrus database = new dbContextWalrus();
+        protected dbWalrusContext database = new dbWalrusContext();
     }
+
     public abstract class XModuleUpdatable : XModule
     {
         protected RestUserMessage _msg;
@@ -39,7 +41,7 @@ namespace WalrusBot2.Modules
         [Alias("pos")]
         protected async Task<bool> AddAsync(IMessageChannel channel, ulong msgId, string footer, string title, string content, int position = 0)  // footer required to verify embed "type" (e.g. React-for-Role, server-status etc.)
         {
-            if (!(await InitMessage(channel, msgId, footer))) return false;
+            if (!(await InitMessage(channel, msgId, new string[] { footer }))) return false;
             EmbedBuilder builder;
 
             if (position == 0) // adds it to the end of the existing embed
@@ -47,7 +49,6 @@ namespace WalrusBot2.Modules
                 builder = _oldEmbed.ToEmbedBuilder();
                 builder.AddField(title, content);
                 _newEmbed = builder.Build();
-
             }
             else
             {
@@ -74,17 +75,17 @@ namespace WalrusBot2.Modules
         }
 
         [Command("delete")]
-        [Alias(new string[]{"del", "remove", "rem"})]
+        [Alias(new string[] { "del", "remove", "rem" })]
         protected async Task<bool> RemoveAsync(IMessageChannel channel, ulong msgId, string footer, string title)
         {
-            if (!(await InitMessage(channel, msgId, footer))) return false;
+            if (!(await InitMessage(channel, msgId, new string[] { footer }, false))) return false;
 
             EmbedBuilder builder = new EmbedBuilder();
             builder.WithAuthor(new EmbedAuthorBuilder().WithName(_oldEmbed.Author.Value.Name).WithIconUrl(_oldEmbed.Author.Value.IconUrl));
             builder.WithFooter(footer);
 
             List<EmbedField> deletedFields = _oldEmbed.Fields.Where(em => em.Name == title).ToList();
-            if(deletedFields.Count < 1)
+            if (deletedFields.Count < 1)
             {
                 await ReplyAsync(database["string", "errEntryNotInMessage"]);
                 return false;
@@ -104,19 +105,29 @@ namespace WalrusBot2.Modules
 
         [Command("move", RunMode = RunMode.Async)]
         [Alias("mv")]
-        protected async Task<bool> MoveMessageAsync(IMessageChannel oldChannel, ulong msgId, IMessageChannel newChannel, string footer, bool delOld=true)
+        protected async Task<bool> MoveMessageAsync(IMessageChannel oldChannel, ulong msgId, IMessageChannel newChannel, string footer, bool delOld = true)
         {
-            if (!(await InitMessage(oldChannel, msgId, footer))) return false;  //finds and sets _msg and _oldEmbed
-            RestUserMessage newMsg = await newChannel.SendMessageAsync("", false, _oldEmbed) as RestUserMessage;
+            if (!(await InitMessage(oldChannel, msgId, new string[] { footer, "React-for-Role" }, false))) return false;  //finds and sets _msg and _oldEmbed
+            if (_oldEmbed.Footer != null) if (_oldEmbed.Footer.Value.Text != "React-for-Role Embed")
+                {
+                    EmbedBuilder builder = _oldEmbed.ToEmbedBuilder();
+                    builder.Footer.Text = "React-for-Role Embed";
+                    _newEmbed = builder.Build();
+                }
+                else
+                {
+                    _newEmbed = _oldEmbed;
+                }
+            RestUserMessage newMsg = await newChannel.SendMessageAsync("", false, _newEmbed) as RestUserMessage;
 
             try
             {
                 IEmote[] emotes = _msg.Reactions.Keys.ToArray();
                 await newMsg.AddReactionsAsync(emotes);
-                if(delOld) await _msg.DeleteAsync();
+                if (delOld) await _msg.DeleteAsync();
                 _msg = newMsg;
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 await ReplyAsync(e.Message);
                 return false;
@@ -128,7 +139,7 @@ namespace WalrusBot2.Modules
         [Alias("pos")]
         protected async Task<bool> PositionAsync(IMessageChannel channel, string footer, ulong msgId, string title, int position)
         {
-            if (!(await InitMessage(channel, msgId, footer))) return false;
+            if (!(await InitMessage(channel, msgId, new string[] { footer, "React-for-Role" }, false))) return false;
 
             if (position > 20 || position > _oldEmbed.Fields.Length)
             {
@@ -141,14 +152,14 @@ namespace WalrusBot2.Modules
             builder.WithFooter(footer);
 
             List<EmbedField> fields = _oldEmbed.Fields.Where(em => em.Name == title).ToList();
-            if(fields.Count < 1)
+            if (fields.Count < 1)
             {
                 await ReplyAsync(database["string", "errEntryNotInMessage"]);
                 return false;
             }
             EmbedField field = fields[0];
-            
-            for(int i = 0; i < _oldEmbed.Fields.Length; i++)
+
+            for (int i = 0; i < _oldEmbed.Fields.Length; i++)
             {
                 EmbedField f = _oldEmbed.Fields[i];
                 if (f.Name != title) builder.AddField(f.Name, f.Value);
@@ -159,7 +170,7 @@ namespace WalrusBot2.Modules
             return true;
         }
 
-        protected async Task<bool> InitMessage(IMessageChannel channel, ulong msgId, string footer)
+        protected async Task<bool> InitMessage(IMessageChannel channel, ulong msgId, string[] footer, bool checkLen = true)
         {
             try
             {
@@ -180,12 +191,13 @@ namespace WalrusBot2.Modules
                 return false;
             }
             _oldEmbed = _msg.Embeds.ElementAt(0);
-            if (_oldEmbed.Fields.Length >= 20)
+            //don't run this on delete or move
+            if (_oldEmbed.Fields.Length >= 20 && checkLen)
             {
                 await ReplyAsync(database["string", "errTooManyFields"]);
                 return false;
             }
-            if (_oldEmbed.Footer.Value.ToString() != footer)
+            if (!footer.Contains(_oldEmbed.Footer.Value.ToString()))
             {
                 await ReplyAsync(database["string", "errMsgNotValid"]);
             }
@@ -203,6 +215,7 @@ namespace WalrusBot2.Modules
         }
 
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
+
         public override async Task<PreconditionResult> CheckPermissionsAsync(ICommandContext context, CommandInfo command, IServiceProvider services)
 #pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
         {
@@ -211,18 +224,57 @@ namespace WalrusBot2.Modules
             var guild = user.Guild;
 
             List<ulong> roleIds = new List<ulong>();
-            dbContextWalrus database = new dbContextWalrus();
+            dbWalrusContext database = new dbWalrusContext();
 
             foreach (string role in _roles)
             {
                 ulong roleId = 0;
                 try { roleId = Convert.ToUInt64(database["role", role]); }
                 catch { Console.WriteLine($"The role {role} is given in a RequireRole attribute but you haven't added it the the MySQL database!"); }
-                if (guild.Roles.Any(r => r.Id == roleId) ) roleIds.Add(roleId);
+                if (guild.Roles.Any(r => r.Id == roleId)) roleIds.Add(roleId);
             }
-            if(roleIds.Count < 1) return PreconditionResult.FromError($"The guild does not have the role any of the roles required to access this command.");
+            if (roleIds.Count < 1) return PreconditionResult.FromError($"The guild does not have the role any of the roles required to access this command.");
 
-            return user.RoleIds.Any(rId => roleIds.Contains(rId) ) ? PreconditionResult.FromSuccess() : PreconditionResult.FromError("You do not have the sufficient role required to access this command.");
+            return user.RoleIds.Any(rId => roleIds.Contains(rId)) ? PreconditionResult.FromSuccess() : PreconditionResult.FromError("You do not have the sufficient role required to access this command.");
+        }
+    }
+
+    public class TimerService
+    {
+        private readonly List<TimerInfo> _timers = new List<TimerInfo>();
+
+        public class TimerInfo
+        {
+            public TimerInfo(Timer t, TimeCalcFunction st, TimeCalcFunction ri)
+            {
+                timer = t;
+                StartTime = st;
+                RepeatInterval = ri;
+            }
+
+            public Timer timer;
+
+            public delegate TimeSpan TimeCalcFunction();
+
+            public TimeCalcFunction StartTime;
+            public TimeCalcFunction RepeatInterval;
+        }
+
+        public TimerService()
+        {
+        }
+
+        public void AddTimer(TimerInfo timerInfo)
+        => _timers.Add(timerInfo);
+
+        public void Stop() // 6) Example to make the timer stop running
+        {
+            foreach (TimerInfo t in _timers) t.timer.Change(Timeout.Infinite, Timeout.Infinite);
+        }
+
+        public void Restart() // 7) Example to restart the timer
+        {
+            foreach (TimerInfo t in _timers) t.timer.Change(t.StartTime(), t.RepeatInterval());
         }
     }
 }

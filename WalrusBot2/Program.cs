@@ -1,6 +1,4 @@
-﻿#define GOOGLE
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.IO;
@@ -24,21 +22,25 @@ using Microsoft.Extensions.DependencyInjection;
 
 using WalrusBot2.Data;
 using WalrusBot2.Services;
+using WalrusBot2.Modules;
 
 namespace WalrusBot2
 {
-    class Program
+    internal class Program
     {
-        public static bool Debug = false;
+        private static bool _withGoogle = true;
+        public static bool Debug = true;
         private DiscordSocketClient _client;
-        private dbContextWalrus _database = new dbContextWalrus();
+        private dbWalrusContext _database = new dbWalrusContext();
         private DriveService _driveService;
         public static UserCredential GoogleCredential;
-        
+
         #region Main
-        static void Main(string[] args)
+
+        private static void Main(string[] args)
         {
             #region MySql Server Login
+
             string server;
             string port;
             string database;
@@ -47,6 +49,7 @@ namespace WalrusBot2
 
             Dictionary<string, string> parameters = args.Select(a => a.Split('=')).ToDictionary(a => a[0], a => a.Length == 2 ? a[1] : null);
             if (parameters.Keys.Contains("debug")) Debug = parameters["debug"] == "true" ? true : false;
+            if (parameters.Keys.Contains("google")) _withGoogle = parameters["google"] == "false" ? false : true;
             if (parameters.Keys.Contains("server"))  // assuming you'd type them all in
             {
                 server = parameters["server"];
@@ -96,7 +99,8 @@ namespace WalrusBot2
                 builder.Add("user", user);
                 builder.Add("password", password);
                 builder.Add("persistsecurityinfo", "True");
-                dbContextWalrus.SetConnectionString(builder.ToString());
+                builder.Add("sslmode", "None");
+                dbWalrusContext.SetConnectionString(builder.ToString());
             }
             catch (Exception e)
             {
@@ -105,83 +109,105 @@ namespace WalrusBot2
                 Console.Read();
                 return;
             }
-            #endregion
+
+            #endregion MySql Server Login
 
             new Program().MainAsync().GetAwaiter().GetResult();
         }
 
         public async Task MainAsync()
         {
-        #if GOOGLE
             #region Google
-            #region OAuth2 Login
-            string[] _scopes = {
+
+            if (_withGoogle)
+            {
+                #region OAuth2 Login
+
+                string[] _scopes = {
                 GmailService.Scope.GmailSend,
                 DriveService.Scope.DriveReadonly,
                 DriveService.Scope.DriveMetadataReadonly
             };
-            using (var fs = new FileStream(_database["config", "googleCredPath"], FileMode.Open, FileAccess.Read))
-            {
-                GoogleCredential = GoogleWebAuthorizationBroker.AuthorizeAsync(
-                    GoogleClientSecrets.Load(fs).Secrets, _scopes, "user", CancellationToken.None, new FileDataStore(_database["config", "googleTokenPath"], true)).Result;
-            }
-            Console.WriteLine("Got token.");
-            #endregion
-
-            #region Download Email Template
-            _driveService = new DriveService(new BaseClientService.Initializer()
-            {
-                HttpClientInitializer = GoogleCredential,
-                ApplicationName = _database["config", "googleAppName"]
-            });
-            var expReq = _driveService.Files.Export(_database["config", "emailTemplateId"], "text/plain");
-            var stream = new MemoryStream();
-            expReq.MediaDownloader.ProgressChanged += (IDownloadProgress progress)
-                =>
-            {
-                switch (progress.Status)
+                using (var fs = new FileStream(_database["config", "googleCredPath"], FileMode.Open, FileAccess.Read))
                 {
-                    case DownloadStatus.Downloading:
-                        {
-                            Console.WriteLine(progress.BytesDownloaded);
-                            break;
-                        }
-                    case DownloadStatus.Completed:
-                        {
-                            Console.WriteLine("Verification email file has been downloaded!\n");
-                            break;
-                        }
-                    case DownloadStatus.Failed:
-                        {
-                            Console.WriteLine(">> The download of the verification email file has failed! D: Try adding it manually! <<\n");
-                            break;
-                        }
+                    GoogleCredential = GoogleWebAuthorizationBroker.AuthorizeAsync(
+                        GoogleClientSecrets.Load(fs).Secrets, _scopes, "user", CancellationToken.None, new FileDataStore(_database["config", "googleTokenPath"], true)).Result;
                 }
-            };
-            await expReq.DownloadAsync(stream);
+                Console.WriteLine("Got token.");
 
-            using (FileStream fs = new FileStream(_database["config", "emailTemplatePath"], FileMode.OpenOrCreate, FileAccess.Write))
-            {
-                stream.WriteTo(fs);
+                #endregion OAuth2 Login
+
+                #region Download Email Template
+
+                _driveService = new DriveService(new BaseClientService.Initializer()
+                {
+                    HttpClientInitializer = GoogleCredential,
+                    ApplicationName = _database["config", "googleAppName"]
+                });
+                var expReq = _driveService.Files.Export(_database["config", "emailTemplateId"], "text/plain");
+                var stream = new MemoryStream();
+                expReq.MediaDownloader.ProgressChanged += (IDownloadProgress progress)
+                    =>
+                {
+                    switch (progress.Status)
+                    {
+                        case DownloadStatus.Downloading:
+                            {
+                                Console.WriteLine(progress.BytesDownloaded);
+                                break;
+                            }
+                        case DownloadStatus.Completed:
+                            {
+                                Console.WriteLine("Verification email file has been downloaded!\n");
+                                break;
+                            }
+                        case DownloadStatus.Failed:
+                            {
+                                Console.WriteLine(">> The download of the verification email file has failed! D: Try adding it manually! <<\n");
+                                break;
+                            }
+                    }
+                };
+                await expReq.DownloadAsync(stream);
+
+                using (FileStream fs = new FileStream(_database["config", "emailTemplatePath"], FileMode.OpenOrCreate, FileAccess.Write))
+                {
+                    stream.WriteTo(fs);
+                }
+
+                #endregion Download Email Template
             }
-            #endregion
-            #endregion
-        #endif
+
+            #endregion Google
+
             #region Discord
-            _client = new DiscordSocketClient();
+
+            var discordConfig = new DiscordSocketConfig();
+            discordConfig.AlwaysDownloadUsers = true;
+            discordConfig.MessageCacheSize = 5;
+
+            _client = new DiscordSocketClient(discordConfig);
 
             var services = ConfigureServices();
             services.GetRequiredService<LogService>();
             await services.GetRequiredService<CommandHandlingService>().InitializeAsync(services);
 
-            await _client.LoginAsync(TokenType.Bot, _database["config", Program.Debug ? "botDebugToken" : "botToken"]);
-            await _client.StartAsync();
-            #endregion
+            string token = _database["config", Program.Debug ? "botDebugToken" : "botToken"];
+            string prefix = _database["config", Program.Debug ? "botDebugPrefix" : "botPrefix"];
 
-            await _client.SetActivityAsync(new Game("Half Life 3", ActivityType.Playing) );
+            Console.WriteLine($"Debugging is {Debug}");
+            Console.WriteLine($"Connecting to Discord with token {token} and prefix \"{prefix}\"");
+
+            await _client.LoginAsync(TokenType.Bot, token);
+            await _client.StartAsync();
+
+            #endregion Discord
+
+            await _client.SetActivityAsync(new Game("Half Life 5", ActivityType.Playing));
             await Task.Delay(-1);
         }
-        #endregion
+
+        #endregion Main
 
         private IServiceProvider ConfigureServices()
         {
@@ -194,7 +220,8 @@ namespace WalrusBot2
                 // Logging
                 .AddLogging()
                 .AddSingleton<LogService>()
-                // Add additional services here...
+                // Timers
+                .AddSingleton(new TimerService())
                 .BuildServiceProvider();
         }
     }
