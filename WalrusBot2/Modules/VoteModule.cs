@@ -22,13 +22,13 @@ namespace WalrusBot2.Modules
         #region Commands
 
         [Command("create", RunMode = RunMode.Async)]
-        [RequireUserRole(new string[] { "committee", "tester" })]
+        [RequireUserRole(new string[] { "committee", "tester", "chief" })]
         [RequireContext(ContextType.Guild)]
         public async Task CreateVote(string voteName, string voteDescription)
             => await CreateVote(voteName, voteDescription, 1);
 
         [Command("create", RunMode = RunMode.Async)]
-        [RequireUserRole(new string[] { "committee", "tester" })]
+        [RequireUserRole(new string[] { "committee", "tester", "chief" })]
         [RequireContext(ContextType.Guild)]
         public async Task CreateVote(string voteName, string voteDescription, int numVotes)
         {
@@ -41,7 +41,7 @@ namespace WalrusBot2.Modules
 
             #region Voice Channel
 
-            IVoiceChannel voiceChannel;
+            SocketVoiceChannel voiceChannel = null;
             while (true)
             {
                 reply = await NextMessageAsync(new EnsureFromUserCriterion(Context.User.Id), timeout: TimeSpan.FromSeconds(TIMEOUT));
@@ -275,7 +275,17 @@ namespace WalrusBot2.Modules
                 await ReplyAsync("Something's gone wrong adding your vote! I'm so sorry, but you'll have to try again :/");
                 return;
             }
-            var users = Context.Guild.Users.Where(u => u.Roles.Intersect(roles).Any()).Distinct();
+            List<SocketGuildUser> users;
+            if (voiceChannel == null)
+            {
+                Console.WriteLine("Channel null");
+                users = Context.Guild.Users.Where(u => u.Roles.Intersect(roles).Any()).Distinct().ToList();
+            }
+            else
+            {
+                Console.WriteLine("Channel not null");
+                users = voiceChannel.Users.Where(u => u.Roles.Intersect(roles).Any()).Distinct().ToList();
+            }
             foreach (SocketUser user in users)
             {
                 if (user.IsBot) continue;
