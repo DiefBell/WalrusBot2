@@ -408,7 +408,7 @@ namespace WalrusBot2.Modules
 
                 if (communityMembershipRole != null) await user.AddRoleAsync(communityMembershipRole);
 
-                if (membership.Membership.Replace("\"", "").Split(',').Contains("DLC Bundle Membership") && dlcMembershipRole != null)
+                if (membership.Membership.Replace("\"", "").Split(',').Contains("DLC Membership") && dlcMembershipRole != null)
                     await user.AddRoleAsync(dlcMembershipRole);
 
                 if (membership.Membership.Replace("\"", "").Split(',').Contains("Game of the Year Membership") && gotyMembershipRole != null)
@@ -542,16 +542,14 @@ namespace WalrusBot2.Modules
 
         #region Static Members
 
-        public static async Task SpamOnJoinAsync(SocketUser user)
+        public static async Task SpamOnJoinAsync(SocketGuildUser user)
         {
             if (user.IsBot) return;
+            var db = new dbWalrusContext();
+            if (user.Guild.Id.ToString() != db["config", "guildId"]) return;
 
             IDMChannel c = await user.GetOrCreateDMChannelAsync();
-            await c.SendMessageAsync("Hi there! Welcome to the Southampton Video Games and Esports Society Discord server! My name is Maisie, " +
-                "and I'm our Discord bot.\n\nTo get access to more channels in the Discord, please verify your email with my by sending me " +
-                "`svge!verify email <your_email>` here in these priavte DMs. You should use your Southampton University email if you're a student, " +
-                "or the email you joined SUSU with if you're an alumnus or have some other kind of SUSU membership. Once you've sent me back the code " +
-                "you receive in your email I can get you verified and give you access to the rest of our server! Happy gaming :)");
+            await c.SendMessageAsync(db["string", "userJoined"]);
         }
 
         private static IRole ParseRole(dbWalrusContext database, string roleName, SocketGuild guild)
